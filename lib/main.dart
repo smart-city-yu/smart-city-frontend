@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/app_colors.dart';
+import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
@@ -16,8 +17,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'RoadNa',
       debugShowCheckedModeBanner: false,
-      initialRoute: '/login',
+      initialRoute: '/',
       routes: {
+        '/': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const HomeScreen(),
