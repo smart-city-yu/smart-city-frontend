@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
-import '../services/fake_auth_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/app_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -14,7 +14,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
-  final _authService = FakeAuthService();
+  final _authService = AuthService();
 
   bool _isLoading = false;
   bool _hidePassword = true;

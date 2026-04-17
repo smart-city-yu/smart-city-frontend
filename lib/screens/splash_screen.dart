@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
+import '../services/auth_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -34,9 +35,11 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    Future.delayed(const Duration(seconds: 5), () {
+    Future.delayed(const Duration(seconds: 5), () async {
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/login');
+      final token = await AuthService().getToken();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, token != null ? '/home' : '/login');
     });
   }
 
