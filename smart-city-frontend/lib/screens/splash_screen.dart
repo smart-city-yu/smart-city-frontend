@@ -24,17 +24,17 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 1400),
     );
 
-    _scale = Tween<double>(begin: 0.8, end: 2).animate(
+    _scale = Tween<double>(begin: 0.8, end: 5).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
 
-    _opacity = Tween<double>(begin: 0, end: 2).animate(
+    _opacity = Tween<double>(begin: 0, end: 3).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
 
     _controller.forward();
 
-    Future.delayed(const Duration(seconds: 4), () {
+    Future.delayed(const Duration(seconds: 5), () {
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/login');
     });
@@ -49,14 +49,14 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.greenDark,
+      backgroundColor: AppColors.white,
       body: Center(
         child: FadeTransition(
           opacity: _opacity,
           child: ScaleTransition(
             scale: _scale,
             child: Image.asset(
-              'assets/images/logo1.png',
+              'assets/images/logo.png',
               width: 160,
             ),
           ),
