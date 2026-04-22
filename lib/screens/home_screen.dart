@@ -1,13 +1,199 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
+import '../widgets/home/nearest_place_sheet.dart';
 import '../core/app_colors.dart';
-class HomeScreen extends StatelessWidget {
+import '../data/map_dummy_data.dart';
+import '../models/map_issue.dart';
+import '../widgets/bottom_nav_bar.dart';
+import '../widgets/home/add_report_sheet.dart';
+import '../widgets/home/go_to_sheet.dart';
+import '../widgets/home/home_map_view.dart';
+import '../widgets/home/issue_details_sheet.dart';
+import '../widgets/home/report_form_sheet.dart';
+import '../widgets/home/success_dialog.dart';
+import '../models/path_node.dart';
+import '../data/path_dummy_data.dart';
+
+
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int selectedNavIndex = 0;
+  final Set<String> votedIssueIds = {};
+  late List<MapIssue> mapIssues;
+
+  final MapController _mapController = MapController();
+  LatLng? _currentLocation;
+
+  List<PathNode> pathNodes = [];
+  List<LatLng> pathPoints = [];
+
+
+
+  @override
+  void initState() {
+    super.initState();
+    mapIssues = List<MapIssue>.from(initialIssues);
+    _loadLocation();
+
+  }
+
+  void _loadPathNodes(String category) {
+    // TODO: Replace dummyPathNodes with backend API response
+
+    final filteredNodes = dummyPathNodes
+        .where((node) => node.category == category)
+        .toList()
+      ..sort((a, b) => a.order.compareTo(b.order));
+
+
+    if (filteredNodes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No path nodes found for $category')),
+      );
+      return;
+    }
+
+    setState(() {
+      pathNodes = filteredNodes;
+      pathPoints = filteredNodes
+          .map((node) => LatLng(node.latitude, node.longitude))
+          .toList();
+    });
+  }
+
   void _logout(BuildContext context) {
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      '/login',
-          (route) => false,
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+  }
+
+  Future<void> _loadLocation() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      return;
+    }
+
+    final pos = await Geolocator.getCurrentPosition();
+
+    setState(() {
+      _currentLocation = LatLng(pos.latitude, pos.longitude);
+    });
+
+    _mapController.move(_currentLocation!, 16);
+  }
+
+  void _recenterMap() {
+    if (_currentLocation == null) return;
+    _mapController.move(_currentLocation!, 16);
+  }
+
+  void _addReportToMap(String label, String emoji, String description) {
+    if (_currentLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Current location not available yet. Allow access to your location',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      mapIssues.add(
+        MapIssue(
+          id: 'report_${DateTime.now().millisecondsSinceEpoch}',
+          emoji: emoji,
+          title: '$label Report',
+          sub: 'Reported just now',
+          desc: description,
+          color: const Color(0xFF3A7D1E),
+          position: _currentLocation!,
+        ),
+      );
+    });
+
+    _mapController.move(_currentLocation!, 16);
+  }
+
+  void _showIssueSheet(MapIssue issue) {
+    showIssueDetailsSheet(
+      context: context,
+      issue: issue,
+      alreadyVoted: votedIssueIds.contains(issue.id),
+      onVoteStillThere: () {
+        setState(() {
+          votedIssueIds.add(issue.id);
+        });
+      },
+      onVoteFixed: () {
+        setState(() {
+          votedIssueIds.add(issue.id);
+        });
+      },
+    );
+  }
+
+  void _showAddReportSheet() {
+    showAddReportSheet(
+      context: context,
+      onCategorySelected: (label, emoji) {
+        _showReportForm(label, emoji);
+      },
+    );
+  }
+
+  void _showReportForm(String label, String emoji) {
+    showReportFormSheet(
+      context: context,
+      label: label,
+      emoji: emoji,
+      onSubmit: (description) {
+        _addReportToMap(label, emoji, description);
+
+        showSuccessDialog(
+          context: context,
+          title: 'Report Submitted!',
+          message:
+          'Your $label report has been pinned on the map at your current location.',
+        );
+      },
+    );
+  }
+
+  void _showGoToSheet() {
+    showGoToSheet(
+      context: context,
+      onCategorySelected: (label, emoji) {
+        _loadPathNodes(label);
+
+        showNearestPlaceSheet(
+          context: context,
+          label: label,
+          emoji: emoji,
+          onBack: _showGoToSheet,
+          onNavigate: () {
+            showSuccessDialog(
+              context: context,
+              title: 'Navigation Started',
+              message: 'Routing to the nearest $label. Follow the directions on the map.',
+            );
+          },
+        );
+      },
     );
   }
 
@@ -15,89 +201,28 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.white,
-      appBar: AppBar(
-        backgroundColor: AppColors.white,
-        elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          'Home',
-          style: TextStyle(
-            color: AppColors.greenDark,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () => _logout(context),
-            icon: const Icon(
-              Icons.logout_rounded,
-              color: AppColors.green,
-            ),
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
+      body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 40),
-            Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: AppColors.green,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: const Icon(
-                Icons.check_circle_outline_rounded,
-                color: Colors.white,
-                size: 46,
-              ),
+            HomeMapView(
+              mapController: _mapController,
+              mapIssues: mapIssues,
+              currentLocation: _currentLocation,
+              onLogout: () => _logout(context),
+              onRecenter: _recenterMap,
+              onShowAddReport: _showAddReportSheet,
+              onShowGoTo: _showGoToSheet,
+              onTapIssue: _showIssueSheet,
+              pathPoints: pathPoints,
             ),
-            const SizedBox(height: 28),
-            const Text(
-              'Welcome!',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: AppColors.greenDark,
-              ),
+            HomeBottomNavBar(
+              selectedIndex: selectedNavIndex,
+              onTap: (index) {
+                setState(() {
+                  selectedNavIndex = index;
+                });
+              },
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'You have successfully logged in.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                height: 1.6,
-                color: AppColors.textGrey,
-              ),
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton.icon(
-                onPressed: () => _logout(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.green,
-                  foregroundColor: Colors.white,
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text(
-                  'Log Out',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
           ],
         ),
       ),
