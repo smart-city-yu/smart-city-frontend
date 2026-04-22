@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
-import '../services/fake_auth_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/app_widgets.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -14,9 +14,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passController = TextEditingController();
   final _confirmController = TextEditingController();
-  final _authService = FakeAuthService();
+  final _authService = AuthService();
 
   bool _isLoading = false;
   bool _hidePassword = true;
@@ -26,6 +27,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _passController.dispose();
     _confirmController.dispose();
     super.dispose();
@@ -42,6 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _nameController.text,
       _emailController.text,
       _passController.text,
+      _phoneController.text,
     );
 
     setState(() {
@@ -137,6 +140,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     }
                     if (!value.contains('@')) {
                       return 'Enter a valid email';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 15),
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: _buildInput('Phone Number', Icons.phone_outlined),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Enter your phone number';
                     }
                     return null;
                   },
