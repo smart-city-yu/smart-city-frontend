@@ -3,6 +3,7 @@ import '../core/app_colors.dart';
 import '../services/fake_auth_service.dart';
 import '../widgets/app_widgets.dart';
 import 'forgot_password_screen.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,7 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
-  final _authService = FakeAuthService();
+  final _authService = AuthService();
   bool _isLoading = false;
   bool _hidePassword = true;
 
