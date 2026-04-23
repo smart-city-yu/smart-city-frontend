@@ -15,8 +15,7 @@ import '../widgets/home/report_form_sheet.dart';
 import '../widgets/home/success_dialog.dart';
 import '../models/path_node.dart';
 import '../data/path_dummy_data.dart';
-
-
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,24 +35,18 @@ class _HomeScreenState extends State<HomeScreen> {
   List<PathNode> pathNodes = [];
   List<LatLng> pathPoints = [];
 
-
-
   @override
   void initState() {
     super.initState();
     mapIssues = List<MapIssue>.from(initialIssues);
     _loadLocation();
-
   }
 
   void _loadPathNodes(String category) {
-    // TODO: Replace dummyPathNodes with backend API response
-
     final filteredNodes = dummyPathNodes
         .where((node) => node.category == category)
         .toList()
       ..sort((a, b) => a.order.compareTo(b.order));
-
 
     if (filteredNodes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -189,11 +182,30 @@ class _HomeScreenState extends State<HomeScreen> {
             showSuccessDialog(
               context: context,
               title: 'Navigation Started',
-              message: 'Routing to the nearest $label. Follow the directions on the map.',
+              message:
+              'Routing to the nearest $label. Follow the directions on the map.',
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildCurrentScreen() {
+    if (selectedNavIndex == 3) {
+      return const ProfileScreen();
+    }
+
+    return HomeMapView(
+      mapController: _mapController,
+      mapIssues: mapIssues,
+      currentLocation: _currentLocation,
+      onLogout: () => _logout(context),
+      onRecenter: _recenterMap,
+      onShowAddReport: _showAddReportSheet,
+      onShowGoTo: _showGoToSheet,
+      onTapIssue: _showIssueSheet,
+      pathPoints: pathPoints,
     );
   }
 
@@ -204,16 +216,8 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            HomeMapView(
-              mapController: _mapController,
-              mapIssues: mapIssues,
-              currentLocation: _currentLocation,
-              onLogout: () => _logout(context),
-              onRecenter: _recenterMap,
-              onShowAddReport: _showAddReportSheet,
-              onShowGoTo: _showGoToSheet,
-              onTapIssue: _showIssueSheet,
-              pathPoints: pathPoints,
+            Expanded(
+              child: _buildCurrentScreen(),
             ),
             HomeBottomNavBar(
               selectedIndex: selectedNavIndex,
