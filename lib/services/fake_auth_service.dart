@@ -1,16 +1,18 @@
 class FakeAuthService {
-  static const String correctEmail = 'leen@test.com';
-  static const String takenEmail = 'used@test.com';
-  static const String resetCode = '123456';
-
+  static String currentEmail = 'leen@test.com';
   static String currentPassword = '123456L';
+
+  static const String takenEmail = 'used@test.com';
+  static const String usedNationalId = '1234567890';
+  static const String usedPhone = '0791234567';
+  static const String resetCode = '123456';
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     await Future.delayed(const Duration(seconds: 2));
 
     String cleanEmail = email.trim().toLowerCase();
 
-    if (cleanEmail == correctEmail && password == currentPassword) {
+    if (cleanEmail == currentEmail && password == currentPassword) {
       return {
         'success': true,
         'message': 'Logged in successfully.',
@@ -29,17 +31,86 @@ class FakeAuthService {
 
   Future<Map<String, dynamic>> register(
       String name,
+      String nationalId,
+      String phone,
       String email,
       String password,
       ) async {
     await Future.delayed(const Duration(seconds: 2));
 
+    String cleanName = name.trim();
+    String cleanNationalId = nationalId.trim();
+    String cleanPhone = phone.trim();
     String cleanEmail = email.trim().toLowerCase();
 
-    if (name.trim().isEmpty) {
+    if (cleanName.isEmpty) {
       return {
         'success': false,
         'message': 'Name is required.',
+        'data': null,
+      };
+    }
+
+    if (cleanNationalId.isEmpty) {
+      return {
+        'success': false,
+        'message': 'National ID is required.',
+        'data': null,
+      };
+    }
+
+    if (!RegExp(r'^[0-9]{10}$').hasMatch(cleanNationalId)) {
+      return {
+        'success': false,
+        'message': 'National ID must be 10 digits.',
+        'data': null,
+      };
+    }
+
+    if (cleanNationalId == usedNationalId) {
+      return {
+        'success': false,
+        'message': 'National ID already used.',
+        'data': null,
+      };
+    }
+
+    if (cleanPhone.isEmpty) {
+      return {
+        'success': false,
+        'message': 'Phone number is required.',
+        'data': null,
+      };
+    }
+
+    if (!RegExp(r'^07[789][0-9]{7}$').hasMatch(cleanPhone)) {
+      return {
+        'success': false,
+        'message': 'Phone number must be a valid Jordanian number.',
+        'data': null,
+      };
+    }
+
+    if (cleanPhone == usedPhone) {
+      return {
+        'success': false,
+        'message': 'Phone number already used.',
+        'data': null,
+      };
+    }
+
+    if (cleanEmail.isEmpty) {
+      return {
+        'success': false,
+        'message': 'Email is required.',
+        'data': null,
+      };
+    }
+
+    if (!cleanEmail.contains('@')) {
+      return {
+        'success': false,
+        'message': 'Enter a valid email.',
         'data': null,
       };
     }
@@ -52,11 +123,40 @@ class FakeAuthService {
       };
     }
 
+    if (password.isEmpty) {
+      return {
+        'success': false,
+        'message': 'Password is required.',
+        'data': null,
+      };
+    }
+
+    if (password.length < 7) {
+      return {
+        'success': false,
+        'message': 'At least 7 characters',
+        'data': null,
+      };
+    }
+
+    if (!RegExp(r'[A-Z]').hasMatch(password)) {
+      return {
+        'success': false,
+        'message': 'Must contain uppercase letter',
+        'data': null,
+      };
+    }
+
+    currentEmail = cleanEmail;
+    currentPassword = password;
+
     return {
       'success': true,
       'message': 'Account created! Please sign in.',
       'data': {
-        'name': name.trim(),
+        'name': cleanName,
+        'nationalId': cleanNationalId,
+        'phone': cleanPhone,
         'email': cleanEmail,
       },
     };
@@ -132,7 +232,7 @@ class FakeAuthService {
       };
     }
 
-    if (cleanEmail != correctEmail) {
+    if (cleanEmail != currentEmail) {
       return {
         'success': false,
         'message': 'Email not found',
@@ -158,7 +258,7 @@ class FakeAuthService {
 
     String cleanEmail = email.trim().toLowerCase();
 
-    if (cleanEmail != correctEmail) {
+    if (cleanEmail != currentEmail) {
       return {
         'success': false,
         'message': 'Email not found',
@@ -197,7 +297,7 @@ class FakeAuthService {
 
     String cleanEmail = email.trim().toLowerCase();
 
-    if (cleanEmail != correctEmail) {
+    if (cleanEmail != currentEmail) {
       return {
         'success': false,
         'message': 'Email not found',

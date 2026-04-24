@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 import '../services/auth_service.dart';
-import '../widgets/app_widgets.dart';
-import '../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -13,12 +11,15 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _nationalIdController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passController = TextEditingController();
   final _confirmController = TextEditingController();
-  final _authService = AuthService();
+
+  final _authService = AuthService ();
 
   bool _isLoading = false;
   bool _hidePassword = true;
@@ -27,8 +28,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
+    _nationalIdController.dispose();
     _phoneController.dispose();
+    _emailController.dispose();
     _passController.dispose();
     _confirmController.dispose();
     super.dispose();
@@ -43,9 +45,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final result = await _authService.register(
       _nameController.text,
+      //_nationalIdController.text,
+      _phoneController.text,
       _emailController.text,
       _passController.text,
-      _phoneController.text,
     );
 
     setState(() {
@@ -97,13 +100,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           child: Form(
             key: _formKey,
             child: Column(
               children: [
-                const AppLogo(),
-                const SizedBox(height: 20),
                 const Text(
                   'Create Account',
                   style: TextStyle(
@@ -115,28 +116,64 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 5),
                 const Text(
                   'Join us to improve road services around you',
-                  style: TextStyle(
-                    color: AppColors.textGrey,
-                  ),
+                  style: TextStyle(color: AppColors.textGrey),
+                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
                 TextFormField(
                   controller: _nameController,
                   decoration: _buildInput('Full Name', Icons.person_outline),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.trim().isEmpty) {
                       return 'Enter your name';
                     }
                     return null;
                   },
                 ),
-                const SizedBox(height: 15),
+
+                const SizedBox(height: 12),
+
+                TextFormField(
+                  controller: _nationalIdController,
+                  keyboardType: TextInputType.number,
+                  decoration: _buildInput('National ID', Icons.badge_outlined),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Enter your national ID';
+                    }
+                    if (!RegExp(r'^[0-9]{10}$').hasMatch(value.trim())) {
+                      return 'National ID must be 10 digits';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: _buildInput('Phone Number', Icons.phone_outlined),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Enter your phone number';
+                    }
+                    if (!RegExp(r'^07[789][0-9]{7}$').hasMatch(value.trim())) {
+                      return 'Enter a valid Jordanian phone number';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: _buildInput('Email', Icons.email_outlined),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.trim().isEmpty) {
                       return 'Enter your email';
                     }
                     if (!value.contains('@')) {
@@ -145,19 +182,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 15),
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: _buildInput('Phone Number', Icons.phone_outlined),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Enter your phone number';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 15),
+
+                const SizedBox(height: 12),
+
                 TextFormField(
                   controller: _passController,
                   obscureText: _hidePassword,
@@ -189,7 +216,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 15),
+
+                const SizedBox(height: 12),
+
                 TextFormField(
                   controller: _confirmController,
                   obscureText: _hideConfirm,
@@ -218,7 +247,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 20),
+
+                const SizedBox(height: 16),
+
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -239,7 +270,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         : const Text('Create Account'),
                   ),
                 ),
-                const SizedBox(height: 10),
+
+                const SizedBox(height: 6),
+
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: const Text(
