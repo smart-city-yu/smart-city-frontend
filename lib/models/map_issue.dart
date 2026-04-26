@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import 'app_category.dart';
 
 class MapIssue {
   final String id;
@@ -19,6 +20,36 @@ class MapIssue {
     required this.color,
     required this.position,
   });
+
+  /// Builds a [MapIssue] from a backend Report JSON object.
+  ///
+  /// Expected shape (mirrors the Report JPA entity):
+  /// ```json
+  /// {
+  ///   "reportId":    "abc123",
+  ///   "description": "Large pothole near intersection",
+  ///   "lat":         31.9632,
+  ///   "lon":         35.9304,
+  ///   "category":    "pothole"   // exact ReportCategory enum value
+  /// }
+  /// ```
+  factory MapIssue.fromJson(Map<String, dynamic> json) {
+    final categoryValue = json['category'] as String? ?? '';
+    final cat = reportCategoryFromValue(categoryValue);
+
+    return MapIssue(
+      id: json['reportId'] as String? ?? '',
+      emoji: cat?.emoji ?? '📍',
+      title: cat?.displayName ?? 'Road Issue',
+      sub: 'Reported',
+      desc: json['description'] as String? ?? '',
+      color: cat?.color ?? const Color(0xFF607D8B),
+      position: LatLng(
+        (json['lat'] as num).toDouble(),
+        (json['lon'] as num).toDouble(),
+      ),
+    );
+  }
 
   MapIssue copyWith({
     String? id,

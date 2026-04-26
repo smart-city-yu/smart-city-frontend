@@ -48,6 +48,120 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // ── PUT /api/user/profile ─────────────────────────────────────────────────
+
+  Future<void> _showEditProfileDialog() async {
+    final nameCtrl = TextEditingController(text: _user!.fullName);
+    final phoneCtrl = TextEditingController(text: _user!.phone);
+
+    final inputDecoration = (String label, IconData icon) => InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: AppColors.textGrey, fontSize: 14),
+          prefixIcon: Icon(icon, color: AppColors.textLight, size: 20),
+          filled: true,
+          fillColor: AppColors.backgroundLight,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide:
+                const BorderSide(color: AppColors.primary, width: 1.5),
+          ),
+        );
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(
+              fontWeight: FontWeight.bold, color: AppColors.textDark),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration:
+                  inputDecoration('Full Name', Icons.person_outline),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: phoneCtrl,
+              keyboardType: TextInputType.phone,
+              decoration:
+                  inputDecoration('Phone Number', Icons.phone_outlined),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppColors.textGrey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    nameCtrl.dispose();
+    phoneCtrl.dispose();
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isLoading = true);
+
+    final result = await _userService.updateProfile(
+      fullName: nameCtrl.text.trim(),
+      phoneNumber: phoneCtrl.text.trim(),
+    );
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      setState(() {
+        _user =
+            UserProfile.fromJson(result['data'] as Map<String, dynamic>);
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully.'),
+          backgroundColor: AppColors.green,
+        ),
+      );
+    } else {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] as String? ?? 'Update failed.'),
+          backgroundColor: AppColors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -98,7 +212,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              const SizedBox(height: 20),
+              // Edit button row
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: 'Edit Profile',
+                  icon: const Icon(Icons.edit_outlined,
+                      color: AppColors.primary),
+                  onPressed: _showEditProfileDialog,
+                ),
+              ),
+              const SizedBox(height: 4),
               Container(
                 width: 80,
                 height: 80,

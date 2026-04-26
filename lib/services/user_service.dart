@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
+/// Connects to:
+///   GET   /api/user/profile          — fetch authenticated user's profile
+///   PUT   /api/user/profile          — update fullName and/or phoneNumber
+///   POST  /api/user/change-password  — change password (current + new + confirm)
 class UserService {
   static const String _baseUrl = 'http://localhost:8080/api/user';
   final AuthService _authService = AuthService();
@@ -14,6 +18,9 @@ class UserService {
     };
   }
 
+  // -------------------------------------------------------------------------
+  // GET /api/user/profile
+  // -------------------------------------------------------------------------
   Future<Map<String, dynamic>> getProfile() async {
     try {
       final response = await http.get(
@@ -30,10 +37,58 @@ class UserService {
         'data': null,
       };
     } catch (_) {
-      return {'success': false, 'message': 'Could not connect to server.', 'data': null};
+      return {
+        'success': false,
+        'message': 'Could not connect to server.',
+        'data': null,
+      };
     }
   }
 
+  // -------------------------------------------------------------------------
+  // PUT /api/user/profile
+  //
+  // Body: { fullName (required, min 3 chars), phoneNumber (optional) }
+  // Response: ProfileResponse
+  // -------------------------------------------------------------------------
+  Future<Map<String, dynamic>> updateProfile({
+    required String fullName,
+    String? phoneNumber,
+  }) async {
+    try {
+      final body = <String, dynamic>{'fullName': fullName.trim()};
+      if (phoneNumber != null && phoneNumber.trim().isNotEmpty) {
+        body['phoneNumber'] = phoneNumber.trim();
+      }
+
+      final response = await http.put(
+        Uri.parse('$_baseUrl/profile'),
+        headers: await _authHeaders(),
+        body: jsonEncode(body),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      }
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Failed to update profile.',
+        'data': null,
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message': 'Could not connect to server.',
+        'data': null,
+      };
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // POST /api/user/change-password
+  //
+  // Body: { currentPassword, newPassword (min 8), confirmPassword }
+  // -------------------------------------------------------------------------
   Future<Map<String, dynamic>> changePassword({
     required String currentPassword,
     required String newPassword,
@@ -50,7 +105,7 @@ class UserService {
         }),
       );
       if (response.statusCode == 200) {
-        return {'success': true, 'message': 'Password changed successfully'};
+        return {'success': true, 'message': 'Password changed successfully.'};
       }
       final data = jsonDecode(response.body);
       return {

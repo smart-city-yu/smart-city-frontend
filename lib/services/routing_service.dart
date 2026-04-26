@@ -2,20 +2,15 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
+/// Connects to:
+///   GET   /api/routing/places  — fetch nearby places by PlaceCategory enum value
+///   POST  /api/routing/route   — calculate shortest route between two coordinates
+///
+/// Category values come from [AppCategory.backendValue] (e.g. 'RESTAURANT', 'FUEL').
+/// No mapping layer lives here — callers pass the exact backend enum string directly.
 class RoutingService {
   static const String _baseUrl = 'http://localhost:8080/api/routing';
   final AuthService _authService = AuthService();
-
-  static const Map<String, String> _categoryMap = {
-    'Restaurant': 'RESTAURANT',
-    'Gas station': 'FUEL',
-    'Park': 'PARK',
-    'Parking': 'PARKING',
-    'Supermarket': 'SUPERMARKET',
-    'Mosque': 'MOSQUE',
-  };
-
-  String? toCategoryEnum(String label) => _categoryMap[label];
 
   Future<Map<String, String>> _authHeaders() async {
     final token = await _authService.getToken();
@@ -25,44 +20,75 @@ class RoutingService {
     };
   }
 
-  /// Returns a list of H3PlaceWrapper objects as raw JSON maps.
-  /// Each map has: { "h3Index": int, "place": { "name": str, "category": str,
-  ///   "center": {"lat": double, "lon": double}, "points": [...] } }
-  Future<Map<String, dynamic>> getNearbyPlaces(
-    double lat,
-    double lon,
-    String categoryLabel,
-  ) async {
-    final categoryEnum = toCategoryEnum(categoryLabel);
-    if (categoryEnum == null) {
-      return {'success': false, 'message': 'Unknown category: $categoryLabel', 'data': null};
-    }
+  // -------------------------------------------------------------------------
+  // GET /api/routing/places?lat=&lon=&category=
+  //
+  // [categoryBackendValue] must be the exact PlaceCategory enum string,
+  // e.g. 'RESTAURANT', 'FUEL', 'PARK', 'PARKING', 'SUPERMARKET', 'MOSQUE'.
+  //
+  // Successful response: List of H3PlaceWrapper JSON objects, each shaped as:
+  //   {
+  //     "h3Index": <long>,
+  //     "place": {
+  //       "name": <string>,
+  //       "category": <string>,
+  //       "center": { "lat": <double>, "lon": <double> },
+  //       "points": [ { "lat": <double>, "lon": <double> }, ... ]
+  //     }
+  //   }
+  // -------------------------------------------------------------------------
+  Future<Map<String, dynamic>> getNearbyPlaces({
+    required double lat,
+    required double lon,
+    required String categoryBackendValue,
+  }) async {
     try {
       final uri = Uri.parse('$_baseUrl/places').replace(queryParameters: {
         'lat': lat.toString(),
         'lon': lon.toString(),
-        'category': categoryEnum,
+        'category': categoryBackendValue,
       });
       final response = await http.get(uri, headers: await _authHeaders());
+
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return {'success': true, 'data': data};
+        final decoded = jsonDecode(response.body);
+        if (decoded is List) {
+          return {'success': true, 'data': decoded};
+        }
+        return {'success': true, 'data': <dynamic>[]};
       }
-      return {'success': false, 'message': 'Failed to load nearby places.', 'data': null};
+      return {
+        'success': false,
+        'message': 'Failed to load nearby places (${response.statusCode}).',
+        'data': null,
+      };
     } catch (_) {
-      return {'success': false, 'message': 'Could not connect to server.', 'data': null};
+      return {
+        'success': false,
+        'message': 'Could not connect to server.',
+        'data': null,
+      };
     }
   }
 
-  /// Returns a RoutingPath as raw JSON:
-  /// { "pathNodes": [{"id": int, "latitude": double, "longitude": double, "order": int}],
-  ///   "distance": double }
-  Future<Map<String, dynamic>> getRoute(
-    double lat1,
-    double lon1,
-    double lat2,
-    double lon2,
-  ) async {
+  // -------------------------------------------------------------------------
+  // POST /api/routing/route?lat1=&lon1=&lat2=&lon2=
+  //
+  // Successful response: RoutingPath JSON shaped as:
+  //   {
+  //     "pathNodes": [
+  //       { "id": <long>, "latitude": <double>, "longitude": <double>, "order": <int> },
+  //       ...
+  //     ],
+  //     "distance": <double>
+  //   }
+  // -------------------------------------------------------------------------
+  Future<Map<String, dynamic>> getRoute({
+    required double lat1,
+    required double lon1,
+    required double lat2,
+    required double lon2,
+  }) async {
     try {
       final uri = Uri.parse('$_baseUrl/route').replace(queryParameters: {
         'lat1': lat1.toString(),
@@ -71,13 +97,22 @@ class RoutingService {
         'lon2': lon2.toString(),
       });
       final response = await http.post(uri, headers: await _authHeaders());
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return {'success': true, 'data': data};
       }
-      return {'success': false, 'message': 'Failed to calculate route.', 'data': null};
+      return {
+        'success': false,
+        'message': 'Failed to calculate route (${response.statusCode}).',
+        'data': null,
+      };
     } catch (_) {
-      return {'success': false, 'message': 'Could not connect to server.', 'data': null};
+      return {
+        'success': false,
+        'message': 'Could not connect to server.',
+        'data': null,
+      };
     }
   }
 }

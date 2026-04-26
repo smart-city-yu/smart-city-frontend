@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
-import '../../data/map_dummy_data.dart';
+import '../../models/app_category.dart';
 import '../sheet_handle.dart';
 
+/// Shows a grid of report-issue categories drawn from [reportCategories].
+/// Each item maps 1-to-1 to the backend ReportCategory enum.
+/// [onCategorySelected] receives the chosen [AppCategory] so the caller has
+/// both the display info and the exact backend enum value.
 void showAddReportSheet({
   required BuildContext context,
-  required void Function(String label, String emoji) onCategorySelected,
+  required void Function(AppCategory category) onCategorySelected,
 }) {
   showModalBottomSheet(
     context: context,
@@ -43,19 +47,19 @@ void showAddReportSheet({
                     itemCount: reportCategories.length,
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       childAspectRatio: 2.2,
                       crossAxisSpacing: 14,
                       mainAxisSpacing: 14,
                     ),
                     itemBuilder: (_, index) {
-                      final item = reportCategories[index];
+                      final cat = reportCategories[index];
                       return InkWell(
                         borderRadius: BorderRadius.circular(20),
                         onTap: () {
                           Navigator.pop(context);
-                          onCategorySelected(item['label']!, item['emoji']!);
+                          onCategorySelected(cat);
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -80,7 +84,7 @@ void showAddReportSheet({
                                 ),
                                 child: Center(
                                   child: Text(
-                                    item['emoji']!,
+                                    cat.emoji,
                                     style: const TextStyle(fontSize: 20),
                                   ),
                                 ),
@@ -88,7 +92,7 @@ void showAddReportSheet({
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  item['label']!,
+                                  cat.displayName,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
-import '../../data/map_dummy_data.dart';
+import '../../models/app_category.dart';
 import '../sheet_handle.dart';
 
+/// Shows a list of place categories drawn from [placeCategories].
+/// Each item maps 1-to-1 to a PlaceCategory enum value in the routing engine.
+/// [onCategorySelected] receives the chosen [AppCategory] so the caller has
+/// both the display info and the exact backend enum value for the API call.
 void showGoToSheet({
   required BuildContext context,
-  required void Function(String label, String emoji) onCategorySelected,
+  required void Function(AppCategory category) onCategorySelected,
 }) {
   showModalBottomSheet(
     context: context,
@@ -33,12 +37,12 @@ void showGoToSheet({
                 ),
               ),
               const SizedBox(height: 10),
-              ...goToCategories.map((item) {
+              ...placeCategories.map((cat) {
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   onTap: () {
                     Navigator.pop(context);
-                    onCategorySelected(item['label']!, item['emoji']!);
+                    onCategorySelected(cat);
                   },
                   leading: Container(
                     width: 54,
@@ -49,13 +53,13 @@ void showGoToSheet({
                     ),
                     child: Center(
                       child: Text(
-                        item['emoji']!,
+                        cat.emoji,
                         style: const TextStyle(fontSize: 24),
                       ),
                     ),
                   ),
                   title: Text(
-                    item['label']!,
+                    cat.displayName,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
