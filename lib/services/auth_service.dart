@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   // 10.0.2.2 = localhost from Android emulator; change to your machine's IP for a real device
-  static const String _baseUrl = 'http://10.0.2.2:8080/api/auth';
+  static const String _baseUrl = 'http://localhost:8080/api/auth';
   static const String _tokenKey = 'auth_token';
 
   Future<Map<String, dynamic>> login(String email, String password) async {
@@ -41,9 +41,10 @@ class AuthService {
 
   Future<Map<String, dynamic>> register(
     String name,
+    String nationalId,
     String email,
-    String password,
     String phoneNumber,
+    String password,
   ) async {
     try {
       final response = await http.post(
@@ -51,9 +52,10 @@ class AuthService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'fullName': name.trim(),
+          'nationalId': nationalId.trim(),
           'email': email.trim().toLowerCase(),
-          'password': password,
           'phoneNumber': phoneNumber.trim(),
+          'password': password,
         }),
       );
 

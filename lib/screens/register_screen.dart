@@ -45,9 +45,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final result = await _authService.register(
       _nameController.text,
-      //_nationalIdController.text,
-      _phoneController.text,
+      _nationalIdController.text,
       _emailController.text,
+      _phoneController.text,
       _passController.text,
     );
 

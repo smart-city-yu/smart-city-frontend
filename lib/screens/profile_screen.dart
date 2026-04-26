@@ -1,18 +1,95 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
-import '../data/profile_dummy_data.dart';
+import '../models/user_profile.dart';
+import '../services/user_service.dart';
+import '../services/auth_service.dart';
 import 'change_password_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
-  void logout(BuildContext context) {
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final UserService _userService = UserService();
+  final AuthService _authService = AuthService();
+  UserProfile? _user;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final result = await _userService.getProfile();
+    if (!mounted) return;
+    if (result['success'] == true) {
+      setState(() {
+        _user = UserProfile.fromJson(result['data'] as Map<String, dynamic>);
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _error = result['message'] as String?;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void logout(BuildContext context) async {
+    await _authService.logout();
+    if (mounted) {
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = dummyUserProfile;
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.backgroundLight,
+        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+
+    if (_error != null || _user == null) {
+      return Scaffold(
+        backgroundColor: AppColors.backgroundLight,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
+              const SizedBox(height: 12),
+              Text(
+                _error ?? 'Failed to load profile.',
+                style: const TextStyle(color: AppColors.textGrey),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _isLoading = true;
+                    _error = null;
+                  });
+                  _loadProfile();
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                child: const Text('Retry', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final user = _user!;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
