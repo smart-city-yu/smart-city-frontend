@@ -8,45 +8,13 @@ void showNearestPlaceSheet({
   required String emoji,
   required VoidCallback onBack,
   required VoidCallback onNavigate,
+  Map<String, String>? placeData,
 }) {
-  final places = {
-    'Restaurant': {
-      'name': 'Al Quds Restaurant',
-      'distance': '320 m away',
-      'address': 'King Faisal St, Amman',
-    },
-    'Mosque': {
-      'name': 'Al-Husseini Mosque',
-      'distance': '180 m away',
-      'address': 'Downtown Amman',
-    },
-    'Parking': {
-      'name': 'City Mall Parking',
-      'distance': '540 m away',
-      'address': 'Tla\'a Al-Ali, Amman',
-    },
-    'Park': {
-      'name': 'King Hussein Park',
-      'distance': '1.2 km away',
-      'address': 'Al-Abdali, Amman',
-    },
-    'Supermarket': {
-      'name': 'Carrefour Market',
-      'distance': '700 m away',
-      'address': 'Mecca St, Amman',
-    },
-    'Gas Station': {
-      'name': 'Manaseer Station',
-      'distance': '450 m away',
-      'address': 'Zarqa Highway',
-    },
-  };
-
-  final place = places[label] ??
+  final Map<String, String> place = placeData ??
       {
         'name': 'Nearest $label',
-        'distance': '400 m away',
-        'address': 'Amman',
+        'distance': '—',
+        'address': '',
       };
 
   showModalBottomSheet(

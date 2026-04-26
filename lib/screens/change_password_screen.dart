@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
-import '../services/fake_auth_service.dart';
+import '../services/user_service.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -16,7 +16,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final newController = TextEditingController();
   final confirmController = TextEditingController();
 
-  final FakeAuthService _authService = FakeAuthService();
+  final UserService _userService = UserService();
 
   bool hideCurrent = true;
   bool hideNew = true;
@@ -38,9 +38,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       isLoading = true;
     });
 
-    final result = await _authService.changePassword(
+    final result = await _userService.changePassword(
       currentPassword: currentController.text,
       newPassword: newController.text,
+      confirmPassword: confirmController.text,
     );
 
     setState(() {

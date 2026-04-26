@@ -14,7 +14,8 @@ import '../widgets/home/issue_details_sheet.dart';
 import '../widgets/home/report_form_sheet.dart';
 import '../widgets/home/success_dialog.dart';
 import '../models/path_node.dart';
-import '../data/path_dummy_data.dart';
+import '../services/routing_service.dart';
+import '../services/auth_service.dart';
 import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -30,10 +31,13 @@ class _HomeScreenState extends State<HomeScreen> {
   late List<MapIssue> mapIssues;
 
   final MapController _mapController = MapController();
+  final RoutingService _routingService = RoutingService();
+  final AuthService _authService = AuthService();
   LatLng? _currentLocation;
 
   List<PathNode> pathNodes = [];
   List<LatLng> pathPoints = [];
+  bool _isLoadingPlaces = false;
 
   @override
   void initState() {
@@ -42,29 +46,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadLocation();
   }
 
-  void _loadPathNodes(String category) {
-    final filteredNodes = dummyPathNodes
-        .where((node) => node.category == category)
-        .toList()
-      ..sort((a, b) => a.order.compareTo(b.order));
-
-    if (filteredNodes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No path nodes found for $category')),
-      );
-      return;
+  void _logout(BuildContext context) async {
+    await _authService.logout();
+    if (mounted) {
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     }
-
-    setState(() {
-      pathNodes = filteredNodes;
-      pathPoints = filteredNodes
-          .map((node) => LatLng(node.latitude, node.longitude))
-          .toList();
-    });
-  }
-
-  void _logout(BuildContext context) {
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
 
   Future<void> _loadLocation() async {
@@ -170,21 +156,100 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showGoToSheet() {
     showGoToSheet(
       context: context,
-      onCategorySelected: (label, emoji) {
-        _loadPathNodes(label);
+      onCategorySelected: (label, emoji) async {
+        if (_currentLocation == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Current location not available. Allow location access.'),
+            ),
+          );
+          return;
+        }
+
+        setState(() => _isLoadingPlaces = true);
+
+        final placesResult = await _routingService.getNearbyPlaces(
+          _currentLocation!.latitude,
+          _currentLocation!.longitude,
+          label,
+        );
+
+        setState(() => _isLoadingPlaces = false);
+
+        if (!mounted) return;
+
+        if (placesResult['success'] != true ||
+            (placesResult['data'] as List?)?.isEmpty != false) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  placesResult['message'] as String? ?? 'No $label found nearby.'),
+            ),
+          );
+          return;
+        }
+
+        final placesList = placesResult['data'] as List<dynamic>;
+        final nearestRaw = placesList.first as Map<String, dynamic>;
+        final placeInfo = nearestRaw['place'] as Map<String, dynamic>;
+        final center = placeInfo['center'] as Map<String, dynamic>;
+        final placeLat = (center['lat'] as num).toDouble();
+        final placeLon = (center['lon'] as num).toDouble();
+        final placeName = placeInfo['name'] as String? ?? label;
+
+        final distanceMeters = const Distance()(
+          _currentLocation!,
+          LatLng(placeLat, placeLon),
+        );
+        final distanceStr = distanceMeters < 1000
+            ? '${distanceMeters.round()} m away'
+            : '${(distanceMeters / 1000).toStringAsFixed(1)} km away';
+
+        if (!mounted) return;
 
         showNearestPlaceSheet(
           context: context,
           label: label,
           emoji: emoji,
           onBack: _showGoToSheet,
-          onNavigate: () {
-            showSuccessDialog(
-              context: context,
-              title: 'Navigation Started',
-              message:
-              'Routing to the nearest $label. Follow the directions on the map.',
+          placeData: {
+            'name': placeName,
+            'distance': distanceStr,
+            'address': '',
+          },
+          onNavigate: () async {
+            if (_currentLocation == null) return;
+
+            final routeResult = await _routingService.getRoute(
+              _currentLocation!.latitude,
+              _currentLocation!.longitude,
+              placeLat,
+              placeLon,
             );
+
+            if (routeResult['success'] == true) {
+              final routeData = routeResult['data'] as Map<String, dynamic>;
+              final rawNodes = routeData['pathNodes'] as List<dynamic>;
+              final nodes = rawNodes
+                  .map((n) => PathNode.fromJson(n as Map<String, dynamic>))
+                  .toList()
+                ..sort((a, b) => a.order.compareTo(b.order));
+              setState(() {
+                pathNodes = nodes;
+                pathPoints =
+                    nodes.map((n) => LatLng(n.latitude, n.longitude)).toList();
+              });
+              _mapController.move(_currentLocation!, 15);
+            }
+
+            if (mounted) {
+              showSuccessDialog(
+                context: context,
+                title: 'Navigation Started',
+                message:
+                    'Routing to the nearest $label. Follow the directions on the map.',
+              );
+            }
           },
         );
       },
@@ -211,25 +276,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: _buildCurrentScreen(),
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: AppColors.white,
+          body: SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: _buildCurrentScreen(),
+                ),
+                HomeBottomNavBar(
+                  selectedIndex: selectedNavIndex,
+                  onTap: (index) {
+                    setState(() {
+                      selectedNavIndex = index;
+                    });
+                  },
+                ),
+              ],
             ),
-            HomeBottomNavBar(
-              selectedIndex: selectedNavIndex,
-              onTap: (index) {
-                setState(() {
-                  selectedNavIndex = index;
-                });
-              },
-            ),
-          ],
+          ),
         ),
-      ),
+        if (_isLoadingPlaces)
+          const Positioned.fill(
+            child: ColoredBox(
+              color: Color(0x55000000),
+              child: Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
