@@ -11,6 +11,11 @@ class MapIssue {
   final Color color;
   final LatLng position;
 
+  final int stillThereCount;
+  final int fixedCount;
+  final bool isVoted;
+
+
   const MapIssue({
     required this.id,
     required this.emoji,
@@ -19,6 +24,10 @@ class MapIssue {
     required this.desc,
     required this.color,
     required this.position,
+
+    this.stillThereCount = 0,
+    this.fixedCount = 0,
+    this.isVoted = false,
   });
 
   /// Builds a [MapIssue] from a backend Report JSON object.
@@ -59,6 +68,10 @@ class MapIssue {
     String? desc,
     Color? color,
     LatLng? position,
+
+    int? stillThereCount,
+    int? fixedCount,
+    bool? isVoted,
   }) {
     return MapIssue(
       id: id ?? this.id,
@@ -68,6 +81,10 @@ class MapIssue {
       desc: desc ?? this.desc,
       color: color ?? this.color,
       position: position ?? this.position,
+
+      stillThereCount: stillThereCount ?? this.stillThereCount,
+      fixedCount: fixedCount ?? this.fixedCount,
+      isVoted: isVoted ?? this.isVoted,
     );
   }
 }

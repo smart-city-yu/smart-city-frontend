@@ -21,6 +21,7 @@ import '../widgets/home/place_details_sheet.dart';
 import '../widgets/home/report_form_sheet.dart';
 import '../widgets/home/success_dialog.dart';
 import 'profile_screen.dart';
+import 'reports_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,27 +31,21 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // ── services ─────────────────────────────────────────────────────────────
   final AuthService _authService = AuthService();
   final ReportService _reportService = ReportService();
   final RoutingService _routingService = RoutingService();
 
-  // ── navigation ────────────────────────────────────────────────────────────
   int _selectedNavIndex = 0;
 
-  // ── map state ─────────────────────────────────────────────────────────────
   final MapController _mapController = MapController();
   LatLng? _currentLocation;
 
-  late List<MapIssue> _mapIssues;        // road-issue markers
-  List<PlaceMarker> _placeMarkers = [];  // nearby-place pins (Go-To mode)
-  List<LatLng> _pathPoints = [];         // active route polyline
+  late List<MapIssue> _mapIssues;
+  List<PlaceMarker> _placeMarkers = [];
+  List<LatLng> _pathPoints = [];
 
   final Set<String> _votedIssueIds = {};
-
-  bool _isLoading = false; // overlay for long API calls
-
-  // ── lifecycle ─────────────────────────────────────────────────────────────
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -60,8 +55,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadReports();
   }
 
-  // ── helpers ───────────────────────────────────────────────────────────────
-
   void _setLoading(bool v) {
     if (mounted) setState(() => _isLoading = v);
   }
@@ -69,8 +62,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String _formatDistance(double meters) => meters < 1000
       ? '${meters.round()} m away'
       : '${(meters / 1000).toStringAsFixed(1)} km away';
-
-  // ── location ──────────────────────────────────────────────────────────────
 
   Future<void> _loadLocation() async {
     LocationPermission perm = await Geolocator.checkPermission();
@@ -90,8 +81,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_currentLocation != null) _mapController.move(_currentLocation!, 16);
   }
 
-  // ── GET /api/report/all ───────────────────────────────────────────────────
-
   Future<void> _loadReports() async {
     final result = await _reportService.getAllReports();
     if (!mounted) return;
@@ -104,11 +93,8 @@ class _HomeScreenState extends State<HomeScreen> {
               .toList();
         });
       }
-      // empty → backend stub still active → keep initialIssues
     }
   }
-
-  // ── auth ──────────────────────────────────────────────────────────────────
 
   Future<void> _logout() async {
     await _authService.logout();
@@ -116,8 +102,6 @@ class _HomeScreenState extends State<HomeScreen> {
       Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
     }
   }
-
-  // ── POST /api/report/vote ─────────────────────────────────────────────────
 
   void _showIssueSheet(MapIssue issue) {
     showIssueDetailsSheet(
@@ -134,8 +118,6 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-
-  // ── report creation ───────────────────────────────────────────────────────
 
   void _showAddReportSheet() {
     showAddReportSheet(
@@ -154,7 +136,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // POST /api/report/create
   Future<void> _submitReport({
     required AppCategory category,
     required String description,
@@ -164,7 +145,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // Optimistic marker
     setState(() {
       _mapIssues.add(MapIssue(
         id: 'local_${DateTime.now().millisecondsSinceEpoch}',
@@ -190,18 +170,10 @@ class _HomeScreenState extends State<HomeScreen> {
         context: context,
         title: 'Report Submitted!',
         message:
-            'Your ${category.displayName} report has been pinned at your current location.',
+        'Your ${category.displayName} report has been pinned at your current location.',
       );
     }
   }
-
-  // ── Go-To flow ────────────────────────────────────────────────────────────
-  //
-  // New behaviour:
-  //   1. User selects a category  →  GET /api/routing/places
-  //   2. All returned places appear as green pin markers on the map
-  //   3. User taps a pin  →  showPlaceDetailsSheet
-  //   4. User taps "Route"  →  POST /api/routing/route  →  polyline drawn
 
   void _showGoToSheet() {
     showGoToSheet(
@@ -214,7 +186,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
         _setLoading(true);
 
-        // ── GET /api/routing/places ──────────────────────────────────────
         final result = await _routingService.getNearbyPlaces(
           lat: _currentLocation!.latitude,
           lon: _currentLocation!.longitude,
@@ -231,18 +202,16 @@ class _HomeScreenState extends State<HomeScreen> {
           return;
         }
 
-        // Parse every H3PlaceWrapper into a PlaceMarker
         final places = rawList
             .map((j) =>
-                PlaceMarker.fromH3Json(j as Map<String, dynamic>, category))
+            PlaceMarker.fromH3Json(j as Map<String, dynamic>, category))
             .toList();
 
         setState(() {
           _placeMarkers = places;
-          _pathPoints = [];          // clear any previous route
+          _pathPoints = [];
         });
 
-        // Pan map to the first result so the pins are immediately visible
         _mapController.move(
           LatLng(places.first.lat, places.first.lon),
           14,
@@ -251,7 +220,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Dismiss all place pins (and any active route).
   void _clearPlaces() {
     setState(() {
       _placeMarkers = [];
@@ -259,7 +227,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // Called when user taps a place pin on the map
   void _onTapPlace(PlaceMarker place) {
     if (_currentLocation == null) {
       _snack('Location unavailable.');
@@ -279,7 +246,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // POST /api/routing/route
   Future<void> _routeToPlace(PlaceMarker place) async {
     if (_currentLocation == null) return;
 
@@ -306,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _pathPoints =
             nodes.map((n) => LatLng(n.latitude, n.longitude)).toList();
-        _placeMarkers = []; // route is shown — clear place pins
+        _placeMarkers = [];
       });
       _mapController.move(_currentLocation!, 15);
     }
@@ -315,21 +281,20 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       title: 'Navigation Started',
       message:
-          'Routing to ${place.name}. Follow the directions on the map.',
+      'Routing to ${place.name}. Follow the directions on the map.',
     );
   }
-
-  // ── utils ─────────────────────────────────────────────────────────────────
 
   void _snack(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  // ── build ─────────────────────────────────────────────────────────────────
-
   Widget _buildBody() {
     if (_selectedNavIndex == 3) return const ProfileScreen();
+
+    if (_selectedNavIndex == 1) {
+      return ReportsScreen();    }
 
     return HomeMapView(
       mapController: _mapController,
@@ -365,15 +330,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-
-        // ── full-screen loading overlay ─────────────────────────────────────
         if (_isLoading)
           const Positioned.fill(
             child: ColoredBox(
               color: Color(0x55000000),
               child: Center(
-                child:
-                    CircularProgressIndicator(color: AppColors.primary),
+                child: CircularProgressIndicator(color: AppColors.primary),
               ),
             ),
           ),
