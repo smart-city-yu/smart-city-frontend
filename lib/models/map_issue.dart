@@ -11,6 +11,11 @@ class MapIssue {
   final Color color;
   final LatLng position;
 
+  final int stillThereCount;
+  final int fixedCount;
+  final bool isVoted;
+
+
   const MapIssue({
     required this.id,
     required this.emoji,
@@ -19,6 +24,10 @@ class MapIssue {
     required this.desc,
     required this.color,
     required this.position,
+
+    this.stillThereCount = 0,
+    this.fixedCount = 0,
+    this.isVoted = false,
   });
 
   /// Builds a [MapIssue] from a backend Report JSON object.
