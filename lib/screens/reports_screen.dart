@@ -156,7 +156,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: badgeColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -234,7 +235,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: badgeColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
@@ -253,11 +255,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Icon(Icons.location_on, color: AppColors.textGrey, size: 18),
+                      const Icon(Icons.location_on,
+                          color: AppColors.textGrey, size: 18),
                       const SizedBox(width: 6),
                       Text(
                         "${issue.position.latitude.toStringAsFixed(4)}, ${issue.position.longitude.toStringAsFixed(4)}",
-                        style: const TextStyle(fontSize: 13, color: AppColors.textGrey),
+                        style: const TextStyle(
+                            fontSize: 13, color: AppColors.textGrey),
                       ),
                     ],
                   ),
@@ -275,16 +279,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             );
                             if (ok) {
                               setSheetState(() {
-                                myReports[index] = MapIssue(
-                                  id: issue.id,
-                                  emoji: issue.emoji,
-                                  title: issue.title,
-                                  sub: issue.sub,
-                                  desc: issue.desc,
-                                  color: issue.color,
-                                  position: issue.position,
-                                  stillThereCount: issue.stillThereCount + 1,
-                                  fixedCount: issue.fixedCount,
+                                myReports[index] = issue.copyWith(
+                                  stillThereCount:
+                                  issue.stillThereCount + 1,
                                   isVoted: true,
                                 );
                               });
@@ -294,20 +291,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: issue.isVoted ? 0.05 : 0.1),
+                              color: Colors.orange.withValues(
+                                  alpha: issue.isVoted ? 0.05 : 0.1),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                  color:
+                                  Colors.orange.withValues(alpha: 0.3)),
                             ),
                             child: Column(
                               children: [
                                 Icon(Icons.warning_amber_rounded,
-                                    color: issue.isVoted ? Colors.grey : Colors.orange,
+                                    color: issue.isVoted
+                                        ? Colors.grey
+                                        : Colors.orange,
                                     size: 22),
                                 const SizedBox(height: 4),
                                 Text(
                                   "${issue.stillThereCount}",
                                   style: TextStyle(
-                                    color: issue.isVoted ? Colors.grey : Colors.orange,
+                                    color: issue.isVoted
+                                        ? Colors.grey
+                                        : Colors.orange,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                   ),
@@ -315,7 +319,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 Text(
                                   "Still There",
                                   style: TextStyle(
-                                    color: issue.isVoted ? Colors.grey : Colors.orange,
+                                    color: issue.isVoted
+                                        ? Colors.grey
+                                        : Colors.orange,
                                     fontSize: 11,
                                   ),
                                 ),
@@ -336,15 +342,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             );
                             if (ok) {
                               setSheetState(() {
-                                myReports[index] = MapIssue(
-                                  id: issue.id,
-                                  emoji: issue.emoji,
-                                  title: issue.title,
-                                  sub: issue.sub,
-                                  desc: issue.desc,
-                                  color: issue.color,
-                                  position: issue.position,
-                                  stillThereCount: issue.stillThereCount,
+                                myReports[index] = issue.copyWith(
                                   fixedCount: issue.fixedCount + 1,
                                   isVoted: true,
                                 );
@@ -355,20 +353,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: issue.isVoted ? 0.05 : 0.1),
+                              color: Colors.green.withValues(
+                                  alpha: issue.isVoted ? 0.05 : 0.1),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                  color:
+                                  Colors.green.withValues(alpha: 0.3)),
                             ),
                             child: Column(
                               children: [
                                 Icon(Icons.check_circle_outline,
-                                    color: issue.isVoted ? Colors.grey : Colors.green,
+                                    color: issue.isVoted
+                                        ? Colors.grey
+                                        : Colors.green,
                                     size: 22),
                                 const SizedBox(height: 4),
                                 Text(
                                   "${issue.fixedCount}",
                                   style: TextStyle(
-                                    color: issue.isVoted ? Colors.grey : Colors.green,
+                                    color: issue.isVoted
+                                        ? Colors.grey
+                                        : Colors.green,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                   ),
@@ -376,7 +381,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 Text(
                                   "Fixed",
                                   style: TextStyle(
-                                    color: issue.isVoted ? Colors.grey : Colors.green,
+                                    color: issue.isVoted
+                                        ? Colors.grey
+                                        : Colors.green,
                                     fontSize: 11,
                                   ),
                                 ),
@@ -392,13 +399,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       padding: EdgeInsets.only(top: 8),
                       child: Text(
                         "✅ You already voted on this report",
-                        style: TextStyle(fontSize: 12, color: AppColors.textGrey),
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textGrey),
                       ),
                     ),
                   const Divider(height: 35),
                   const Row(
                     children: [
-                      Icon(Icons.auto_awesome, color: AppColors.info, size: 22),
+                      Icon(Icons.auto_awesome,
+                          color: AppColors.info, size: 22),
                       SizedBox(width: 8),
                       Text(
                         "AI Smart Analysis",
@@ -417,10 +426,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.info.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: AppColors.info.withValues(alpha: 0.1)),
+                      border: Border.all(
+                          color: AppColors.info.withValues(alpha: 0.1)),
                     ),
                     child: Text(
-                      issue.desc.isEmpty ? "AI analysis not available yet." : issue.desc,
+                      issue.desc.isEmpty
+                          ? "AI analysis not available yet."
+                          : issue.desc,
                       style: const TextStyle(
                         fontSize: 14,
                         height: 1.6,

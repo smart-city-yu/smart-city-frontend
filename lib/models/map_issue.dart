@@ -68,6 +68,10 @@ class MapIssue {
     String? desc,
     Color? color,
     LatLng? position,
+
+    int? stillThereCount,
+    int? fixedCount,
+    bool? isVoted,
   }) {
     return MapIssue(
       id: id ?? this.id,
@@ -77,6 +81,10 @@ class MapIssue {
       desc: desc ?? this.desc,
       color: color ?? this.color,
       position: position ?? this.position,
+
+      stillThereCount: stillThereCount ?? this.stillThereCount,
+      fixedCount: fixedCount ?? this.fixedCount,
+      isVoted: isVoted ?? this.isVoted,
     );
   }
 }

@@ -27,7 +27,6 @@ class FakeReportService {
       "fixedCount": 2,
       "isVoted": false,
     },
-
     {
       "reportId": "rpt_004",
       "title": "Damaged Sidewalk",
