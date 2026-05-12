@@ -1,17 +1,123 @@
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../../models/map_issue.dart';
+import '../app_widgets.dart';
 import '../sheet_handle.dart';
 
+/// Horizontal scrollable strip of network images.
+Widget _buildPhotoStrip(List<String> urls) {
+  if (urls.isEmpty) return const SizedBox.shrink();
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SizedBox(height: 18),
+      const Text(
+        'Photos',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+      ),
+      const SizedBox(height: 8),
+      SizedBox(
+        height: 110,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: urls.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, i) {
+            return GestureDetector(
+              onTap: () => _showFullImage(context, urls, i),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  urls[i],
+                  width: 110,
+                  height: 110,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (_, child, progress) => progress == null
+                      ? child
+                      : Container(
+                          width: 110,
+                          height: 110,
+                          color: Colors.grey.shade200,
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 110,
+                    height: 110,
+                    color: Colors.grey.shade200,
+                    child: const Icon(Icons.broken_image_outlined,
+                        color: Colors.grey),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    ],
+  );
+}
+
+void _showFullImage(BuildContext context, List<String> urls, int initial) {
+  showDialog(
+    context: context,
+    builder: (_) => Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: PageController(initialPage: initial),
+            itemCount: urls.length,
+            itemBuilder: (_, i) => InteractiveViewer(
+              child: Image.network(
+                urls[i],
+                fit: BoxFit.contain,
+                loadingBuilder: (_, child, progress) => progress == null
+                    ? child
+                    : const Center(
+                        child: CircularProgressIndicator(color: Colors.white)),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 12,
+            right: 12,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 22),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Vote callbacks return [null] on success or an error string on failure.
 void showIssueDetailsSheet({
   required BuildContext context,
   required MapIssue issue,
   required bool alreadyVoted,
-  required VoidCallback onVoteStillThere,
-  required VoidCallback onVoteFixed,
+  required Future<String?> Function() onVoteStillThere,
+  required Future<String?> Function() onVoteFixed,
 }) {
   bool submitted = false;
+  bool voting = false;
   String selectedVote = '';
+  String? voteError;
 
   showModalBottomSheet(
     context: context,
@@ -70,18 +176,51 @@ void showIssueDetailsSheet({
                         style: const TextStyle(fontSize: 13, color: AppColors.textGrey),
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        issue.desc,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF555555),
-                          height: 1.5,
+                    if (issue.subProblem != null) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F7EA),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFC5DFB0)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.label_outline,
+                                size: 14, color: AppColors.greenDark),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                issue.subProblem!,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: AppColors.greenDark,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
+                    ],
+                    if (issue.desc.isNotEmpty) ...[
+                      const SizedBox(height: 18),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          issue.desc,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF555555),
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                    _buildPhotoStrip(issue.imageUrls),
                     const SizedBox(height: 22),
                     const Align(
                       alignment: Alignment.centerLeft,
@@ -105,64 +244,194 @@ void showIssueDetailsSheet({
                           border: Border.all(color: const Color(0xFFE6C95A), width: 2),
                         ),
                         child: const Text(
-                          '⚠️ You already voted on this report.',
+                          '⚠️ You already voted. You can change your vote once every 24 hours.',
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                         ),
-                      )
-                    else
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                onVoteStillThere();
-                                selectedVote = 'still_there';
-                                setSheetState(() => submitted = true);
-                              },
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: AppColors.green, width: 2.5),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                              ),
-                              child: const Text(
-                                '✓ Still there',
-                                style: TextStyle(
-                                  color: AppColors.greenDark,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                onVoteFixed();
-                                selectedVote = 'fixed';
-                                setSheetState(() => submitted = true);
-                              },
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFFC43C34), width: 2.5),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                              ),
-                              child: const Text(
-                                '✗ Fixed',
-                                style: TextStyle(
-                                  color: Color(0xFFC43C34),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
+                    if (!alreadyVoted || true) ...[
+                      if (alreadyVoted) const SizedBox(height: 10),
+                      voting
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                child: CircularProgressIndicator(),
+                              ),
+                            )
+                          : Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () async {
+                                      final confirmed = await showDialog<bool>(
+                                        context: context,
+                                        builder: (_) => AlertDialog(
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(20)),
+                                          title: const Text('Confirm Vote'),
+                                          content: Text(alreadyVoted
+                                              ? 'Change your vote to "Still There"? You won\'t be able to change it again for 24 hours.'
+                                              : 'Submit your vote as "Still There"? You can change it once every 24 hours.'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context, false),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: AppColors.green,
+                                                foregroundColor: Colors.white,
+                                                shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(12)),
+                                              ),
+                                              onPressed: () => Navigator.pop(context, true),
+                                              child: const Text('Confirm'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirmed != true) return;
+                                      setSheetState(() {
+                                        voting = true;
+                                        voteError = null;
+                                      });
+                                      final errMsg = await onVoteStillThere();
+                                      if (errMsg == null) {
+                                        selectedVote = 'still_there';
+                                        setSheetState(() {
+                                          voting = false;
+                                          submitted = true;
+                                        });
+                                      } else {
+                                        setSheetState(() {
+                                          voting = false;
+                                          voteError = errMsg;
+                                        });
+                                      }
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: AppColors.green, width: 2.5),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(18),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          alreadyVoted ? '↺ Still there' : '✓ Still there',
+                                          style: const TextStyle(
+                                            color: AppColors.greenDark,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${issue.stillThereCount}',
+                                          style: const TextStyle(
+                                            color: AppColors.greenDark,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () async {
+                                      final confirmed = await showDialog<bool>(
+                                        context: context,
+                                        builder: (_) => AlertDialog(
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(20)),
+                                          title: const Text('Confirm Vote'),
+                                          content: Text(alreadyVoted
+                                              ? 'Change your vote to "Fixed"? You won\'t be able to change it again for 24 hours.'
+                                              : 'Submit your vote as "Fixed"? You can change it once every 24 hours.'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context, false),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: const Color(0xFFC43C34),
+                                                foregroundColor: Colors.white,
+                                                shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(12)),
+                                              ),
+                                              onPressed: () => Navigator.pop(context, true),
+                                              child: const Text('Confirm'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirmed != true) return;
+                                      setSheetState(() {
+                                        voting = true;
+                                        voteError = null;
+                                      });
+                                      final errMsg = await onVoteFixed();
+                                      if (errMsg == null) {
+                                        selectedVote = 'fixed';
+                                        setSheetState(() {
+                                          voting = false;
+                                          submitted = true;
+                                        });
+                                      } else {
+                                        setSheetState(() {
+                                          voting = false;
+                                          voteError = errMsg;
+                                        });
+                                      }
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: Color(0xFFC43C34), width: 2.5),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(18),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          alreadyVoted ? '↺ Fixed' : '✗ Fixed',
+                                          style: const TextStyle(
+                                            color: Color(0xFFC43C34),
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${issue.fixedCount}',
+                                          style: const TextStyle(
+                                            color: Color(0xFFC43C34),
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                    // ── Inline vote error banner ────────────────────────
+                    if (voteError != null) ...[
+                      const SizedBox(height: 14),
+                      AppErrorBanner(
+                        message: voteError!,
+                        onDismiss: () =>
+                            setSheetState(() => voteError = null),
+                      ),
+                    ],
+                    ],
                   ] else ...[
                     const SizedBox(height: 24),
                     Container(

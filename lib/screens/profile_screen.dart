@@ -3,6 +3,7 @@ import '../core/app_colors.dart';
 import '../models/user_profile.dart';
 import '../services/user_service.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_widgets.dart';
 import 'change_password_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -18,6 +19,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   UserProfile? _user;
   bool _isLoading = true;
   String? _error;
+  // Inline feedback after profile edit dialog.
+  String? _updateSuccess;
+  String? _updateError;
 
   @override
   void initState() {
@@ -125,6 +129,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
 
+    // Capture values before disposing the controllers.
+    final capturedName  = nameCtrl.text.trim();
+    final capturedPhone = phoneCtrl.text.trim();
     nameCtrl.dispose();
     phoneCtrl.dispose();
 
@@ -133,32 +140,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isLoading = true);
 
     final result = await _userService.updateProfile(
-      fullName: nameCtrl.text.trim(),
-      phoneNumber: phoneCtrl.text.trim(),
+      fullName: capturedName,
+      phoneNumber: capturedPhone,
     );
 
     if (!mounted) return;
 
     if (result['success'] == true) {
       setState(() {
-        _user =
-            UserProfile.fromJson(result['data'] as Map<String, dynamic>);
+        _user = UserProfile.fromJson(result['data'] as Map<String, dynamic>);
         _isLoading = false;
+        _updateSuccess = 'Profile updated successfully.';
+        _updateError = null;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully.'),
-          backgroundColor: AppColors.green,
-        ),
-      );
     } else {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] as String? ?? 'Update failed.'),
-          backgroundColor: AppColors.red,
-        ),
-      );
+      setState(() {
+        _isLoading = false;
+        _updateError = result['message'] as String? ?? 'Update failed.';
+        _updateSuccess = null;
+      });
     }
   }
 
@@ -265,6 +265,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: AppColors.textGrey,
                 ),
               ),
+              // ── Profile update feedback banners ─────────────────────
+              if (_updateSuccess != null) ...[
+                const SizedBox(height: 16),
+                AppSuccessBanner(
+                  message: _updateSuccess!,
+                  onDismiss: () => setState(() => _updateSuccess = null),
+                ),
+              ],
+              if (_updateError != null) ...[
+                const SizedBox(height: 16),
+                AppErrorBanner(
+                  message: _updateError!,
+                  onDismiss: () => setState(() => _updateError = null),
+                ),
+              ],
               const SizedBox(height: 32),
               Container(
                 decoration: BoxDecoration(

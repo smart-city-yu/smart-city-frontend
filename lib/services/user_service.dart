@@ -1,13 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
+import '../core/api_constants.dart';
 
 /// Connects to:
 ///   GET   /api/user/profile          — fetch authenticated user's profile
 ///   PUT   /api/user/profile          — update fullName and/or phoneNumber
 ///   POST  /api/user/change-password  — change password (current + new + confirm)
 class UserService {
-  static const String _baseUrl = 'http://localhost:8080/api/user';
+  static const String _baseUrl = '$kApiHost/api/user';
   final AuthService _authService = AuthService();
 
   Future<Map<String, String>> _authHeaders() async {

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'auth_service.dart';
+import '../core/api_constants.dart';
 
 /// Connects to:
 ///   POST  /api/report/create  — submit a new road issue report
@@ -11,12 +13,13 @@ import 'auth_service.dart';
 /// The frontend still makes the proper HTTP calls so that everything
 /// works automatically once the backend is implemented.
 class ReportService {
-  static const String _baseUrl = 'http://localhost:8080/api/report';
+  static const String _baseUrl = '$kApiHost/api/report';
   final AuthService _authService = AuthService();
 
   Future<Map<String, String>> _authHeaders() async {
     final token = await _authService.getToken();
     return {
+      'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
@@ -36,13 +39,16 @@ class ReportService {
   // -------------------------------------------------------------------------
   Future<Map<String, dynamic>> createReport({
     required String category,
-    required String description,
+    String? subProblem,
+    String? description,
+    String? note,
     required double lat,
     required double lon,
-    List<int>? imageBytes,
+    List<XFile>? images,
   }) async {
     try {
       final token = await _authService.getToken();
+
       final request = http.MultipartRequest(
         'POST',
         Uri.parse('$_baseUrl/create'),
@@ -53,32 +59,76 @@ class ReportService {
       }
 
       request.fields['category'] = category;
-      request.fields['description'] = description;
+      if (subProblem != null) request.fields['subProblem'] = subProblem;
+      if (description != null) request.fields['description'] = description;
+      if (note != null && note.isNotEmpty) request.fields['note'] = note;
       request.fields['lat'] = lat.toString();
       request.fields['lon'] = lon.toString();
 
-      // Always include the image field (backend marks it @RequestParam required).
-      // An empty placeholder satisfies the parameter presence check.
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'image',
-          imageBytes ?? [],
-          filename: 'report.jpg',
-        ),
-      );
+      if (images != null) {
+        for (final image in images) {
+          final bytes = await image.readAsBytes();
+          request.files.add(http.MultipartFile.fromBytes(
+            'images',
+            bytes,
+            filename: image.name,
+          ));
+        }
+      }
 
-      final streamed = await request.send();
-      final response = await http.Response.fromStream(streamed);
+      final streamed  = await request.send();
+      final response  = await http.Response.fromStream(streamed);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return {'success': true, 'message': 'Report submitted successfully.'};
       }
-      return {
-        'success': false,
-        'message': 'Failed to submit report (${response.statusCode}).',
-      };
+
+      String errorMessage = 'Failed to submit report.';
+      try {
+        final body = jsonDecode(response.body);
+        if (body is Map && body['message'] != null) {
+          errorMessage = body['message'] as String;
+        }
+      } catch (_) {}
+
+      return {'success': false, 'message': errorMessage};
     } catch (_) {
       return {'success': false, 'message': 'Could not connect to server.'};
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // GET /api/report/user  — current user's own reports
+  // -------------------------------------------------------------------------
+  Future<Map<String, dynamic>> getUserReports() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/user'),
+        headers: await _authHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final body = response.body.trim();
+        if (body.isEmpty || body == 'null') {
+          return {'success': true, 'data': <dynamic>[]};
+        }
+        final decoded = jsonDecode(body);
+        if (decoded is List) {
+          return {'success': true, 'data': decoded};
+        }
+        return {'success': true, 'data': <dynamic>[]};
+      }
+      return {
+        'success': false,
+        'message': 'Failed to load your reports.',
+        'data': null,
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message': 'Could not connect to server.',
+        'data': null,
+      };
     }
   }
 
@@ -143,10 +193,18 @@ class ReportService {
       if (response.statusCode == 200) {
         return {'success': true};
       }
-      return {
-        'success': false,
-        'message': 'Failed to submit vote (${response.statusCode}).',
-      };
+
+      // Parse the backend's JSON error body to show the real message
+      // e.g. "You can change your vote in 23 hour(s)."
+      String errorMessage = 'Failed to submit vote.';
+      try {
+        final body = jsonDecode(response.body);
+        if (body is Map && body['message'] != null) {
+          errorMessage = body['message'] as String;
+        }
+      } catch (_) {}
+
+      return {'success': false, 'message': errorMessage};
     } catch (_) {
       return {'success': false, 'message': 'Could not connect to server.'};
     }

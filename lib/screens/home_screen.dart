@@ -9,6 +9,7 @@ import '../models/app_category.dart';
 import '../models/map_issue.dart';
 import '../models/path_node.dart';
 import '../models/place_marker.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
 import '../services/report_service.dart';
 import '../services/routing_service.dart';
@@ -108,13 +109,47 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       issue: issue,
       alreadyVoted: _votedIssueIds.contains(issue.id),
-      onVoteStillThere: () {
-        setState(() => _votedIssueIds.add(issue.id));
-        _reportService.voteReport(reportId: issue.id, voteType: 'Still');
+      onVoteStillThere: () async {
+        final result = await _reportService.voteReport(
+          reportId: issue.id,
+          voteType: 'Still',
+        );
+        if (result['success'] == true) {
+          setState(() {
+            _votedIssueIds.add(issue.id);
+            final idx = _mapIssues.indexWhere((e) => e.id == issue.id);
+            if (idx != -1) {
+              _mapIssues[idx] = _mapIssues[idx].copyWith(
+                stillThereCount: _mapIssues[idx].stillThereCount + 1,
+                isVoted: true,
+              );
+            }
+          });
+          return null; // null = success
+        } else {
+          return result['message'] as String? ?? 'Could not submit vote.';
+        }
       },
-      onVoteFixed: () {
-        setState(() => _votedIssueIds.add(issue.id));
-        _reportService.voteReport(reportId: issue.id, voteType: 'Fixed');
+      onVoteFixed: () async {
+        final result = await _reportService.voteReport(
+          reportId: issue.id,
+          voteType: 'Fixed',
+        );
+        if (result['success'] == true) {
+          setState(() {
+            _votedIssueIds.add(issue.id);
+            final idx = _mapIssues.indexWhere((e) => e.id == issue.id);
+            if (idx != -1) {
+              _mapIssues[idx] = _mapIssues[idx].copyWith(
+                fixedCount: _mapIssues[idx].fixedCount + 1,
+                isVoted: true,
+              );
+            }
+          });
+          return null; // null = success
+        } else {
+          return result['message'] as String? ?? 'Could not submit vote.';
+        }
       },
     );
   }
@@ -129,49 +164,65 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showReportForm(AppCategory category) {
     showReportFormSheet(
       context: context,
-      label: category.displayName,
-      emoji: category.emoji,
-      onSubmit: (String desc) =>
-          _submitReport(category: category, description: desc),
+      category: category,
+      onSubmit: (String? subProblem, String? description, String? note, List<XFile> images) =>
+          _submitReport(
+            category: category,
+            subProblem: subProblem,
+            description: description,
+            note: note,
+            images: images,
+          ),
     );
   }
 
   Future<void> _submitReport({
     required AppCategory category,
-    required String description,
+    String? subProblem,
+    String? description,
+    String? note,
+    List<XFile> images = const [],
   }) async {
     if (_currentLocation == null) {
       _snack('Location unavailable. Allow location access first.');
       return;
     }
 
-    setState(() {
-      _mapIssues.add(MapIssue(
-        id: 'local_${DateTime.now().millisecondsSinceEpoch}',
-        emoji: category.emoji,
-        title: '${category.displayName} Report',
-        sub: 'Reported just now',
-        desc: description,
-        color: category.color,
-        position: _currentLocation!,
-      ));
-    });
-    _mapController.move(_currentLocation!, 16);
-
-    await _reportService.createReport(
+    final result = await _reportService.createReport(
       category: category.backendValue,
+      subProblem: subProblem,
       description: description,
+      note: note,
       lat: _currentLocation!.latitude,
       lon: _currentLocation!.longitude,
+      images: images.isEmpty ? null : images,
     );
 
-    if (mounted) {
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      setState(() {
+        _mapIssues.add(MapIssue(
+          id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+          emoji: category.emoji,
+          title: '${category.displayName} Report',
+          sub: 'Reported just now',
+          desc: '',
+          color: category.color,
+          position: _currentLocation!,
+          subProblem: subProblem,
+        ));
+      });
+      _mapController.move(_currentLocation!, 16);
+
       showSuccessDialog(
         context: context,
         title: 'Report Submitted!',
         message:
-        'Your ${category.displayName} report has been pinned at your current location.',
+            'Your ${category.displayName} report has been pinned at your current location.',
       );
+    } else {
+      _snack(result['message'] as String? ?? 'Could not submit report.');
     }
   }
 

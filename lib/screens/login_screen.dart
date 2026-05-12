@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
-import '../services/fake_auth_service.dart';
 import '../widgets/app_widgets.dart';
 import 'forgot_password_screen.dart';
 import '../services/auth_service.dart';
@@ -19,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _authService = AuthService();
   bool _isLoading = false;
   bool _hidePassword = true;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -32,6 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     final result = await _authService.login(
@@ -39,19 +40,14 @@ class _LoginScreenState extends State<LoginScreen> {
       _passController.text,
     );
 
-    setState(() {
-      _isLoading = false;
-    });
+    if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result['message']),
-        backgroundColor: result['success'] ? AppColors.green : AppColors.red,
-      ),
-    );
+    setState(() => _isLoading = false);
 
     if (result['success'] == true) {
       Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      setState(() => _errorMessage = result['message'] as String?);
     }
   }
 
@@ -154,6 +150,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
+                // ── Inline error banner ───────────────────────────────
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  AppErrorBanner(
+                    message: _errorMessage!,
+                    onDismiss: () => setState(() => _errorMessage = null),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
