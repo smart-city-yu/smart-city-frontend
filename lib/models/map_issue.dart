@@ -80,15 +80,11 @@ class MapIssue {
     String? desc,
     Color? color,
     LatLng? position,
-<<<<<<< HEAD
-=======
-
     int? stillThereCount,
     int? fixedCount,
     bool? isVoted,
     List<String>? imageUrls,
     String? subProblem,
->>>>>>> c97f44e (Edit Last Version Before Last uploaded Version From Leen)
   }) {
     return MapIssue(
       id: id ?? this.id,
@@ -98,15 +94,11 @@ class MapIssue {
       desc: desc ?? this.desc,
       color: color ?? this.color,
       position: position ?? this.position,
-<<<<<<< HEAD
-=======
-
       stillThereCount: stillThereCount ?? this.stillThereCount,
       fixedCount: fixedCount ?? this.fixedCount,
       isVoted: isVoted ?? this.isVoted,
       imageUrls: imageUrls ?? this.imageUrls,
       subProblem: subProblem ?? this.subProblem,
->>>>>>> c97f44e (Edit Last Version Before Last uploaded Version From Leen)
     );
   }
 }
