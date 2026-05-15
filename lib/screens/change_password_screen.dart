@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 import '../services/user_service.dart';
+import '../widgets/app_widgets.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -22,6 +23,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool hideNew = true;
   bool hideConfirm = true;
   bool isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -36,6 +38,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     setState(() {
       isLoading = true;
+      _errorMessage = null;
     });
 
     final result = await _userService.changePassword(
@@ -44,19 +47,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       confirmPassword: confirmController.text,
     );
 
-    setState(() {
-      isLoading = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result['message']),
-        backgroundColor: result['success'] ? AppColors.green : AppColors.red,
-      ),
-    );
+    if (!mounted) return;
+    setState(() => isLoading = false);
 
     if (result['success'] == true) {
       Navigator.pop(context);
+    } else {
+      setState(() => _errorMessage = result['message'] as String?);
     }
   }
 
@@ -148,8 +145,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   if (v == null || v.isEmpty) {
                     return 'Enter new password';
                   }
-                  if (v.length < 7) {
-                    return 'At least 7 characters';
+                  if (v.length < 8) {
+                    return 'At least 8 characters';
                   }
                   if (!RegExp(r'[A-Z]').hasMatch(v)) {
                     return 'Must contain uppercase letter';
@@ -174,6 +171,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   return null;
                 },
               ),
+              // ── Inline error banner ───────────────────────────────
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 16),
+                AppErrorBanner(
+                  message: _errorMessage!,
+                  onDismiss: () => setState(() => _errorMessage = null),
+                ),
+              ],
               const SizedBox(height: 25),
               SizedBox(
                 width: double.infinity,

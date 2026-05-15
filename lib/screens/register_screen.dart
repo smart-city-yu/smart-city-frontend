@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_widgets.dart';
+import 'email_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -19,11 +21,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passController = TextEditingController();
   final _confirmController = TextEditingController();
 
-  final _authService = AuthService ();
+  final _authService = AuthService();
 
   bool _isLoading = false;
   bool _hidePassword = true;
   bool _hideConfirm = true;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -41,6 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     final result = await _authService.register(
@@ -51,20 +55,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _passController.text,
     );
 
-    setState(() {
-      _isLoading = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result['message']),
-        backgroundColor: result['success'] ? AppColors.green : AppColors.red,
-      ),
-    );
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
     if (result['success'] == true) {
-      Navigator.pushReplacementNamed(context, '/login');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EmailVerificationScreen(
+            email: _emailController.text.trim().toLowerCase(),
+          ),
+        ),
+      );
+      return;
     }
+
+    setState(() => _errorMessage = result['message'] as String?);
   }
 
   InputDecoration _buildInput(String hint, IconData icon, {Widget? suffix}) {
@@ -207,8 +213,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Enter your password';
                     }
-                    if (value.length < 7) {
-                      return 'At least 7 characters';
+                    if (value.length < 8) {
+                      return 'At least 8 characters';
                     }
                     if (!RegExp(r'[A-Z]').hasMatch(value)) {
                       return 'Must contain uppercase letter';
@@ -248,6 +254,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
 
+                // ── Inline error banner ───────────────────────────────
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  AppErrorBanner(
+                    message: _errorMessage!,
+                    onDismiss: () => setState(() => _errorMessage = null),
+                  ),
+                ],
                 const SizedBox(height: 16),
 
                 SizedBox(

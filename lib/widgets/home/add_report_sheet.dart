@@ -14,6 +14,8 @@ void showAddReportSheet({
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    isDismissible: true,
+    enableDrag: true,
     backgroundColor: Colors.transparent,
     builder: (_) {
       return SafeArea(
@@ -30,21 +32,43 @@ void showAddReportSheet({
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SheetHandle(),
-                  const SizedBox(height: 18),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Select Issue Type',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
+                  const SizedBox(height: 14),
+
+                  // ── Header row (title + close button) ────────────────────
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Select Issue Type',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
-                    ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close,
+                              size: 20, color: Colors.black54),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
+
+                  // ── Category grid (all 7 named categories) ────────────────
                   GridView.builder(
                     shrinkWrap: true,
-                    itemCount: reportCategories.length,
+                    // Exclude "other" from the grid — it gets its own button below
+                    itemCount: reportCategories
+                        .where((c) => c.backendValue != 'other')
+                        .length,
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
@@ -54,60 +78,22 @@ void showAddReportSheet({
                       mainAxisSpacing: 14,
                     ),
                     itemBuilder: (_, index) {
-                      final cat = reportCategories[index];
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(20),
-                        onTap: () {
-                          Navigator.pop(context);
-                          onCategorySelected(cat);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF7F8F5),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEEF6E6),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: const Color(0xFFD4ECBF),
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    cat.emoji,
-                                    style: const TextStyle(fontSize: 20),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  cat.displayName,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      final cat = reportCategories
+                          .where((c) => c.backendValue != 'other')
+                          .elementAt(index);
+                      return _categoryTile(
+                        context: context,
+                        cat: cat,
+                        onCategorySelected: onCategorySelected,
                       );
                     },
                   ),
+
+                  // ── "Other" full-width button ────────────────────────────
+                  const SizedBox(height: 14),
+                  const Divider(height: 1, color: Colors.black12),
+                  const SizedBox(height: 14),
+                  _otherButton(context, onCategorySelected),
                 ],
               ),
             ),
@@ -115,5 +101,118 @@ void showAddReportSheet({
         ),
       );
     },
+  );
+}
+
+// ── Category tile (grid item) ───────────────────────────────────────────────
+Widget _categoryTile({
+  required BuildContext context,
+  required AppCategory cat,
+  required void Function(AppCategory) onCategorySelected,
+}) {
+  return InkWell(
+    borderRadius: BorderRadius.circular(20),
+    onTap: () {
+      Navigator.pop(context);
+      onCategorySelected(cat);
+    },
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F8F5),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEEF6E6),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFD4ECBF)),
+            ),
+            child: Center(
+              child: Text(cat.emoji,
+                  style: const TextStyle(fontSize: 20)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              cat.displayName,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ── "Other" full-width button ───────────────────────────────────────────────
+Widget _otherButton(
+  BuildContext context,
+  void Function(AppCategory) onCategorySelected,
+) {
+  final cat = reportCategories.firstWhere((c) => c.backendValue == 'other');
+  return InkWell(
+    borderRadius: BorderRadius.circular(16),
+    onTap: () {
+      Navigator.pop(context);
+      onCategorySelected(cat);
+    },
+    child: Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Text('❓', style: TextStyle(fontSize: 18)),
+            ),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Other Issue',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  "Can't find your issue type? Describe it here",
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
+        ],
+      ),
+    ),
   );
 }

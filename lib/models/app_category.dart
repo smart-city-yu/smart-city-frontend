@@ -19,7 +19,7 @@ class AppCategory {
 
 // ---------------------------------------------------------------------------
 // Report categories — mirrors backend enum  com.smartcity.backend.enums.ReportCategory
-// Values: pothole | brokenRoad | treeInRoad | unpavedStreet | manhole | lamppost | speedBump
+// Values: pothole | brokenRoad | treeInRoad | unpavedStreet | manhole | lamppost | speedBump | other
 // ---------------------------------------------------------------------------
 const List<AppCategory> reportCategories = [
   AppCategory(
@@ -63,6 +63,12 @@ const List<AppCategory> reportCategories = [
     displayName: 'Speed Bump',
     emoji: '⛰️',
     color: Color(0xFF6C8A98),
+  ),
+  AppCategory(
+    backendValue: 'other',
+    displayName: 'Other',
+    emoji: '❓',
+    color: Color(0xFF607D8B),
   ),
 ];
 

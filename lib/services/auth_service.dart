@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/api_constants.dart';
 
 class AuthService {
-  // 10.0.2.2 = localhost from Android emulator; change to your machine's IP for a real device
-  static const String _baseUrl = 'http://localhost:8080/api/auth';
+  static const String _baseUrl = '$kApiHost/api/auth';
   static const String _tokenKey = 'auth_token';
 
   Future<Map<String, dynamic>> login(String email, String password) async {
@@ -68,6 +68,108 @@ class AuthService {
       return {
         'success': false,
         'message': data['message'] ?? 'Registration failed.',
+        'data': null,
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message': 'Could not connect to server. Please try again.',
+        'data': null,
+      };
+    }
+  }
+
+  // ── Forgot / Reset password ─────────────────────────────────────────────
+
+  /// Step 1 — Ask the backend to email a 6-digit reset code.
+  Future<Map<String, dynamic>> sendResetCode({required String email}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/forgot-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email.trim().toLowerCase()}),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': 'A reset code has been sent to your email.',
+          'data': data,
+        };
+      }
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Could not send reset code. Check your email and try again.',
+        'data': null,
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message': 'Could not connect to server. Please try again.',
+        'data': null,
+      };
+    }
+  }
+
+  /// Step 2 — Verify the 6-digit code.
+  Future<Map<String, dynamic>> verifyResetCode({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/verify-reset-code'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email.trim().toLowerCase(),
+          'code': code.trim(),
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': 'Code verified.', 'data': data};
+      }
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Invalid or expired code.',
+        'data': null,
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message': 'Could not connect to server. Please try again.',
+        'data': null,
+      };
+    }
+  }
+
+  /// Step 3 — Set the new password (code is re-sent for server-side validation).
+  Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email.trim().toLowerCase(),
+          'code': code.trim(),
+          'newPassword': newPassword,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': 'Password reset successfully. You can now sign in.',
+          'data': data,
+        };
+      }
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Could not reset password.',
         'data': null,
       };
     } catch (_) {

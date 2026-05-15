@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
+import '../core/api_constants.dart';
 
 /// Connects to:
 ///   GET   /api/routing/places  — fetch nearby places by PlaceCategory enum value
@@ -9,7 +10,7 @@ import 'auth_service.dart';
 /// Category values come from [AppCategory.backendValue] (e.g. 'RESTAURANT', 'FUEL').
 /// No mapping layer lives here — callers pass the exact backend enum string directly.
 class RoutingService {
-  static const String _baseUrl = 'http://localhost:8080/api/routing';
+  static const String _baseUrl = '$kApiHost/api/routing';
   final AuthService _authService = AuthService();
 
   Future<Map<String, String>> _authHeaders() async {

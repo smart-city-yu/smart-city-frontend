@@ -14,7 +14,10 @@ class MapIssue {
   final int stillThereCount;
   final int fixedCount;
   final bool isVoted;
+  final List<String> imageUrls;
 
+  /// The predefined option the user selected (null for "other" paths).
+  final String? subProblem;
 
   const MapIssue({
     required this.id,
@@ -28,6 +31,8 @@ class MapIssue {
     this.stillThereCount = 0,
     this.fixedCount = 0,
     this.isVoted = false,
+    this.imageUrls = const [],
+    this.subProblem,
   });
 
   /// Builds a [MapIssue] from a backend Report JSON object.
@@ -57,6 +62,13 @@ class MapIssue {
         (json['lat'] as num).toDouble(),
         (json['lon'] as num).toDouble(),
       ),
+      stillThereCount: (json['stillVotes'] as num?)?.toInt() ?? 0,
+      fixedCount: (json['fixedVotes'] as num?)?.toInt() ?? 0,
+      imageUrls: (json['imageUrls'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      subProblem: json['subProblem'] as String?,
     );
   }
 
@@ -68,10 +80,11 @@ class MapIssue {
     String? desc,
     Color? color,
     LatLng? position,
-
     int? stillThereCount,
     int? fixedCount,
     bool? isVoted,
+    List<String>? imageUrls,
+    String? subProblem,
   }) {
     return MapIssue(
       id: id ?? this.id,
@@ -81,10 +94,11 @@ class MapIssue {
       desc: desc ?? this.desc,
       color: color ?? this.color,
       position: position ?? this.position,
-
       stillThereCount: stillThereCount ?? this.stillThereCount,
       fixedCount: fixedCount ?? this.fixedCount,
       isVoted: isVoted ?? this.isVoted,
+      imageUrls: imageUrls ?? this.imageUrls,
+      subProblem: subProblem ?? this.subProblem,
     );
   }
 }
