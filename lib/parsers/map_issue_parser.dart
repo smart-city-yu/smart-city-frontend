@@ -8,10 +8,13 @@ class MapIssueParser {
     final categoryValue = json['category'] as String? ?? '';
     final cat = reportCategoryFromValue(categoryValue);
 
+    final emoji = cat?.emoji ?? json['emoji'] as String? ?? '📍';
+    final title = cat?.displayName ?? json['title'] as String? ?? 'Road Issue';
+
     return MapIssue(
       id: json['reportId']?.toString() ?? json['id']?.toString() ?? '',
-      emoji: cat?.emoji ?? '📍',
-      title: cat?.displayName ?? 'Road Issue',
+      emoji: emoji,
+      title: title,
       sub: json['status']?.toString() ?? 'Reported',
       desc: json['aiAnalysis']?.toString() ??
             json['validationReason']?.toString() ??
@@ -33,6 +36,8 @@ class MapIssueParser {
   }
 
   static List<MapIssue> fromJsonList(List<dynamic> jsonList) {
-    return jsonList.map((json) => fromJson(json as Map<String, dynamic>)).toList();
+    return jsonList
+        .map((json) => fromJson(json as Map<String, dynamic>))
+        .toList();
   }
 }
