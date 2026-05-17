@@ -16,22 +16,28 @@ class MapIssueParser {
       emoji: emoji,
       title: title,
       sub: json['status']?.toString() ?? 'Reported',
-      desc: json['aiAnalysis']?.toString() ??
-            json['validationReason']?.toString() ??
-            json['description']?.toString() ?? '',
+      desc: json['description']?.toString() ?? '',
       color: cat?.color ?? const Color(0xFF607D8B),
       position: LatLng(
         (json['lat'] as num).toDouble(),
         (json['lon'] as num).toDouble(),
       ),
-      stillThereCount: (json['stillVotes'] ?? json['stillThereCount'] ?? json['still_there_count']) as int? ?? 0,
-      fixedCount: (json['fixedVotes'] ?? json['fixedCount'] ?? json['fixed_count']) as int? ?? 0,
+      stillThereCount: (json['stillVotes'] as num? ?? json['stillThereCount'] as num? ?? json['still_there_count'] as num?)?.toInt() ?? 0,
+      fixedCount: (json['fixedVotes'] as num? ?? json['fixedCount'] as num? ?? json['fixed_count'] as num?)?.toInt() ?? 0,
       isVoted: (json['isVoted'] ?? json['is_voted']) as bool? ?? false,
       imageUrls: (json['imageUrls'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           const [],
       subProblem: json['subProblem'] as String?,
+      validationScore:
+          (json['validationScore'] as num?)?.toDouble() ?? 0.0,
+      validationReason: json['validationReason'] as String?,
+      priority: json['priority'] as String?,
+      prioritySetBy: json['prioritySetBy'] as String?,
+      revalidationCount:
+          (json['revalidationCount'] as num?)?.toInt() ?? 0,
+      ownerId: (json['userId'] as num?)?.toInt(),
     );
   }
 

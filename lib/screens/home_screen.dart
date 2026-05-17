@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../core/app_colors.dart';
 import '../data/map_dummy_data.dart';
@@ -12,6 +13,7 @@ import '../models/place_marker.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
 import '../services/report_service.dart';
+import '../services/user_service.dart';
 import '../services/routing_service.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/home/add_report_sheet.dart';
@@ -35,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final AuthService _authService = AuthService();
   final ReportService _reportService = ReportService();
   final RoutingService _routingService = RoutingService();
+  final UserService _userService = UserService();
 
   int _selectedNavIndex = 0;
 
@@ -48,12 +51,64 @@ class _HomeScreenState extends State<HomeScreen> {
   final Set<String> _votedIssueIds = {};
   bool _isLoading = false;
 
+  /// ID of the currently logged-in user — used to block self-voting.
+  int? _currentUserId;
+
   @override
   void initState() {
     super.initState();
     _mapIssues = List<MapIssue>.from(initialIssues);
-    _loadLocation();
+    _requestPermissionsThenLoad();
     _loadReports();
+    _loadCurrentUserId();
+  }
+
+  /// Ask for location + camera + storage all at once on first launch.
+  Future<void> _requestPermissionsThenLoad() async {
+    final statuses = await [
+      Permission.locationWhenInUse,
+      Permission.camera,
+      Permission.photos,         // READ_MEDIA_IMAGES on Android 13+
+      Permission.storage,        // READ_EXTERNAL_STORAGE on Android ≤12
+    ].request();
+
+    final locationGranted =
+        statuses[Permission.locationWhenInUse] == PermissionStatus.granted;
+
+    if (locationGranted) {
+      _loadLocation();
+    } else {
+      // Permanently denied → direct user to app settings
+      if (statuses[Permission.locationWhenInUse] ==
+          PermissionStatus.permanentlyDenied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                  'Location permission is required. Enable it in App Settings.'),
+              action: SnackBarAction(
+                label: 'Settings',
+                onPressed: openAppSettings,
+              ),
+              duration: const Duration(seconds: 6),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _loadCurrentUserId() async {
+    final result = await _userService.getProfile();
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final data = result['data'] as Map<String, dynamic>?;
+      if (data != null) {
+        setState(() {
+          _currentUserId = (data['id'] as num?)?.toInt();
+        });
+      }
+    }
   }
 
   void _setLoading(bool v) {
@@ -105,9 +160,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showIssueSheet(MapIssue issue) {
+    final isOwnReport = _currentUserId != null &&
+        issue.ownerId != null &&
+        issue.ownerId == _currentUserId;
+
     showIssueDetailsSheet(
       context: context,
       issue: issue,
+      isOwnReport: isOwnReport,
       alreadyVoted: _votedIssueIds.contains(issue.id),
       onVoteStillThere: () async {
         final result = await _reportService.voteReport(

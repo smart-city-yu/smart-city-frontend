@@ -19,6 +19,26 @@ class MapIssue {
   /// The predefined option the user selected (null for "other" paths).
   final String? subProblem;
 
+  /// The ID of the user who submitted this report.
+  /// Used to prevent self-voting on the map sheet.
+  final int? ownerId;
+
+  // ── AI analysis fields ──────────────────────────────────────────────────
+  /// 0.0–1.0 confidence score returned by the AI service.
+  final double validationScore;
+
+  /// Human-readable reason from the AI (null = analysis not done yet).
+  final String? validationReason;
+
+  /// Priority level: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" (null = not set).
+  final String? priority;
+
+  /// Who last set the priority — "AI" or "ADMIN".
+  final String? prioritySetBy;
+
+  /// Number of times the AI has (re-)analysed this report.
+  final int revalidationCount;
+
   const MapIssue({
     required this.id,
     required this.emoji,
@@ -33,6 +53,13 @@ class MapIssue {
     this.isVoted = false,
     this.imageUrls = const [],
     this.subProblem,
+
+    this.validationScore = 0.0,
+    this.validationReason,
+    this.priority,
+    this.prioritySetBy,
+    this.revalidationCount = 0,
+    this.ownerId,
   });
 
   /// Builds a [MapIssue] from a backend Report JSON object.
@@ -69,6 +96,14 @@ class MapIssue {
               .toList() ??
           const [],
       subProblem: json['subProblem'] as String?,
+      validationScore:
+          (json['validationScore'] as num?)?.toDouble() ?? 0.0,
+      validationReason: json['validationReason'] as String?,
+      priority: json['priority'] as String?,
+      prioritySetBy: json['prioritySetBy'] as String?,
+      revalidationCount:
+          (json['revalidationCount'] as num?)?.toInt() ?? 0,
+      ownerId: (json['userId'] as num?)?.toInt(),
     );
   }
 
@@ -85,6 +120,12 @@ class MapIssue {
     bool? isVoted,
     List<String>? imageUrls,
     String? subProblem,
+    double? validationScore,
+    String? validationReason,
+    String? priority,
+    String? prioritySetBy,
+    int? revalidationCount,
+    int? ownerId,
   }) {
     return MapIssue(
       id: id ?? this.id,
@@ -99,6 +140,12 @@ class MapIssue {
       isVoted: isVoted ?? this.isVoted,
       imageUrls: imageUrls ?? this.imageUrls,
       subProblem: subProblem ?? this.subProblem,
+      validationScore: validationScore ?? this.validationScore,
+      validationReason: validationReason ?? this.validationReason,
+      priority: priority ?? this.priority,
+      prioritySetBy: prioritySetBy ?? this.prioritySetBy,
+      revalidationCount: revalidationCount ?? this.revalidationCount,
+      ownerId: ownerId ?? this.ownerId,
     );
   }
 }
