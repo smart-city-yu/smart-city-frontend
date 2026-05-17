@@ -117,7 +117,6 @@ Widget _buildAiSection(MapIssue issue) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      // ── Header row ──────────────────────────────────────────────────────
       Row(
         children: [
           const Icon(Icons.auto_awesome, color: AppColors.info, size: 22),
@@ -144,15 +143,13 @@ Widget _buildAiSection(MapIssue issue) {
       const SizedBox(height: 14),
 
       if (!analysed) ...[
-        // ── Pending state ────────────────────────────────────────────────
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: AppColors.info.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(15),
-            border:
-                Border.all(color: AppColors.info.withValues(alpha: 0.15)),
+            border: Border.all(color: AppColors.info.withValues(alpha: 0.15)),
           ),
           child: const Row(
             children: [
@@ -177,25 +174,19 @@ Widget _buildAiSection(MapIssue issue) {
           ),
         ),
       ] else ...[
-        // ── Priority badge ───────────────────────────────────────────────
         if (issue.priority != null) ...[
           _buildPriorityRow(issue.priority!, issue.prioritySetBy),
           const SizedBox(height: 14),
         ],
-
-        // ── Confidence bar ───────────────────────────────────────────────
         _buildConfidenceBar(issue.validationScore),
         const SizedBox(height: 14),
-
-        // ── Reason card ──────────────────────────────────────────────────
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.info.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(14),
-            border:
-                Border.all(color: AppColors.info.withValues(alpha: 0.12)),
+            border: Border.all(color: AppColors.info.withValues(alpha: 0.12)),
           ),
           child: Text(
             issue.validationReason?.isNotEmpty == true
@@ -248,8 +239,7 @@ Widget _buildPriorityRow(String priority, String? setBy) {
   return Row(
     children: [
       Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(30),
@@ -274,10 +264,7 @@ Widget _buildPriorityRow(String priority, String? setBy) {
       const SizedBox(width: 10),
       Text(
         owner,
-        style: const TextStyle(
-          fontSize: 11,
-          color: AppColors.textGrey,
-        ),
+        style: const TextStyle(fontSize: 11, color: AppColors.textGrey),
       ),
     ],
   );
@@ -352,7 +339,6 @@ Widget _buildAiHistorySection({
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      // ── Collapse/expand header ────────────────────────────────────────
       InkWell(
         onTap: onToggle,
         borderRadius: BorderRadius.circular(10),
@@ -383,10 +369,9 @@ Widget _buildAiHistorySection({
 
       if (expanded) ...[
         const SizedBox(height: 12),
-        // ── Timeline entries ────────────────────────────────────────────
         ...aiHistory.asMap().entries.map((e) {
-          final i   = e.key;
-          final run = e.value;
+          final i          = e.key;
+          final run        = e.value;
           final isValid    = run['valid'] as bool? ?? true;
           final confidence = ((run['confidence'] as num?)?.toDouble() ?? 0.0);
           final pct        = (confidence * 100).round();
@@ -399,7 +384,6 @@ Widget _buildAiHistorySection({
             dateStr = fmt.format(DateTime.parse(rawDate).toLocal());
           } catch (_) {}
 
-          // Human-readable trigger label
           final String triggerLabel;
           final Color  triggerColor;
           switch (trigger) {
@@ -423,7 +407,6 @@ Widget _buildAiHistorySection({
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Left timeline rail ──────────────────────────────────
                 SizedBox(
                   width: 24,
                   child: Column(
@@ -438,16 +421,12 @@ Widget _buildAiHistorySection({
                       ),
                       if (!isLast)
                         Expanded(
-                          child: Container(
-                            width: 2,
-                            color: AppColors.border,
-                          ),
+                          child: Container(width: 2, color: AppColors.border),
                         ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 12),
-                // ── Run card ────────────────────────────────────────────
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
@@ -461,7 +440,6 @@ Widget _buildAiHistorySection({
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Trigger label
                           Row(
                             children: [
                               Icon(
@@ -483,7 +461,6 @@ Widget _buildAiHistorySection({
                             ],
                           ),
                           const SizedBox(height: 6),
-                          // Date + valid badge
                           Row(
                             children: [
                               Expanded(
@@ -508,16 +485,13 @@ Widget _buildAiHistorySection({
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: isValid
-                                        ? AppColors.green
-                                        : AppColors.red,
+                                    color: isValid ? AppColors.green : AppColors.red,
                                   ),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          // Priority + confidence
                           Row(
                             children: [
                               if (priority != null) ...[
@@ -528,8 +502,7 @@ Widget _buildAiHistorySection({
                                     color: runPriorityColor.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
-                                        color: runPriorityColor
-                                            .withValues(alpha: 0.3)),
+                                        color: runPriorityColor.withValues(alpha: 0.3)),
                                   ),
                                   child: Text(
                                     priority,
@@ -604,7 +577,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     });
 
     final result = await myService.getUserReports();
-
     if (!mounted) return;
 
     if (result['success'] == true) {
@@ -682,14 +654,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     return RefreshIndicator(
       color: AppColors.green,
-      onRefresh: () async {
-        fetchReports();
-      },
+      onRefresh: () async => fetchReports(),
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         itemCount: myReports.length,
         itemBuilder: (context, index) {
-          MapIssue item = myReports[index];
+          final item = myReports[index];
 
           Color badgeColor = Colors.orange;
           String badgeText = 'Under Processing';
@@ -734,7 +704,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: badgeColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -772,27 +743,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
         bool historyExpanded = false;
         Timer? pollingTimer;
 
-        // Fetch fresh report data + AI history, update state
         void refreshReport(StateSetter setSheetState) {
           final reportId = myReports[index].id;
 
-          // Fetch latest report fields
           myService.getReportById(reportId).then((res) {
             if (!context.mounted) return;
             if (res['success'] == true && res['data'] != null) {
               final updated = MapIssueParser.fromJson(
                   res['data'] as Map<String, dynamic>);
-              setSheetState(() {
-                myReports[index] = updated;
-              });
-              // Also update the list screen
-              setState(() {
-                myReports[index] = updated;
-              });
+              setSheetState(() => myReports[index] = updated);
+              setState(() => myReports[index] = updated);
             }
           });
 
-          // Fetch AI history
           myService.getAiHistory(reportId).then((res) {
             if (!context.mounted) return;
             setSheetState(() {
@@ -806,12 +769,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            // Load data on first build
             if (historyLoading) {
               historyLoading = false;
               refreshReport(setSheetState);
 
-              // Auto-refresh every 4s while AI hasn't run yet
               if (myReports[index].revalidationCount == 0) {
                 pollingTimer = Timer.periodic(
                   const Duration(seconds: 4),
@@ -820,7 +781,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       pollingTimer?.cancel();
                       return;
                     }
-                    // Stop polling once AI has run
                     if (myReports[index].revalidationCount > 0) {
                       pollingTimer?.cancel();
                       pollingTimer = null;
@@ -832,7 +792,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               }
             }
 
-            MapIssue issue = myReports[index];
+            final issue = myReports[index];
 
             Color badgeColor = Colors.orange;
             String badgeText = 'Under Processing';
@@ -852,224 +812,244 @@ class _ReportsScreenState extends State<ReportsScreen> {
             return PopScope(
               onPopInvokedWithResult: (_, __) => pollingTimer?.cancel(),
               child: DraggableScrollableSheet(
-              expand: false,
-              initialChildSize: 0.75,
-              minChildSize: 0.4,
-              maxChildSize: 0.95,
-              builder: (_, scrollController) => SingleChildScrollView(
-                controller: scrollController,
-                padding: const EdgeInsets.fromLTRB(25, 15, 25, 30),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                  Center(
-                    child: Container(
-                      width: 45,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
+                expand: false,
+                initialChildSize: 0.75,
+                minChildSize: 0.4,
+                maxChildSize: 0.95,
+                builder: (_, scrollController) => SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(25, 15, 25, 30),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          "${issue.emoji} ${issue.title}",
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textDark,
+                      // ── Handle bar ──────────────────────────────────────
+                      Center(
+                        child: Container(
+                          width: 45,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: AppColors.border,
+                            borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: badgeColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          badgeText,
-                          style: TextStyle(
-                            color: badgeColor,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (issue.subProblem != null) ...[
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0F7EA),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFC5DFB0)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      const SizedBox(height: 20),
+
+                      // ── Title + status badge ────────────────────────────
+                      Row(
                         children: [
-                          const Icon(Icons.label_outline,
-                              size: 14, color: AppColors.greenDark),
-                          const SizedBox(width: 6),
-                          Flexible(
+                          Expanded(
                             child: Text(
-                              issue.subProblem!,
+                              '${issue.emoji} ${issue.title}',
                               style: const TextStyle(
-                                fontSize: 12.5,
-                                color: AppColors.greenDark,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: badgeColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              badgeText,
+                              style: TextStyle(
+                                color: badgeColor,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on, color: AppColors.textGrey, size: 18),
-                      const SizedBox(width: 6),
-                      Text(
-                        "${issue.position.latitude.toStringAsFixed(4)}, ${issue.position.longitude.toStringAsFixed(4)}",
-                        style: const TextStyle(fontSize: 13, color: AppColors.textGrey),
+
+                      // ── Sub-problem chip ────────────────────────────────
+                      if (issue.subProblem != null) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0F7EA),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFC5DFB0)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.label_outline,
+                                  size: 14, color: AppColors.greenDark),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  issue.subProblem!,
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    color: AppColors.greenDark,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      // ── Location ────────────────────────────────────────
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on,
+                              color: AppColors.textGrey, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${issue.position.latitude.toStringAsFixed(4)}, '
+                            '${issue.position.longitude.toStringAsFixed(4)}',
+                            style: const TextStyle(
+                                fontSize: 13, color: AppColors.textGrey),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  // ── Community votes — read-only for the report owner ──
-                  Row(
-                    children: [
-                      const Icon(Icons.people_outline,
-                          color: AppColors.textGrey, size: 16),
-                      const SizedBox(width: 6),
+                      const SizedBox(height: 20),
+
+                      // ── Community votes (read-only — owner can't vote) ──
+                      const Row(
+                        children: [
+                          Icon(Icons.people_outline,
+                              color: AppColors.textGrey, size: 16),
+                          SizedBox(width: 6),
+                          Text(
+                            'Community votes',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textGrey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withValues(alpha: 0.07),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: Colors.orange.withValues(alpha: 0.25)),
+                              ),
+                              child: Column(
+                                children: [
+                                  const Icon(Icons.warning_amber_rounded,
+                                      color: Colors.orange, size: 22),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${issue.stillThereCount}',
+                                    style: const TextStyle(
+                                      color: Colors.orange,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                  const Text(
+                                    'Still There',
+                                    style: TextStyle(
+                                        color: Colors.orange, fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withValues(alpha: 0.07),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: Colors.green.withValues(alpha: 0.25)),
+                              ),
+                              child: Column(
+                                children: [
+                                  const Icon(Icons.check_circle_outline,
+                                      color: Colors.green, size: 22),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${issue.fixedCount}',
+                                    style: const TextStyle(
+                                      color: Colors.green,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                  const Text(
+                                    'Fixed',
+                                    style: TextStyle(
+                                        color: Colors.green, fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
                       const Text(
-                        'Community votes',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textGrey,
-                        ),
+                        'You cannot vote on your own report.',
+                        style: TextStyle(fontSize: 11, color: AppColors.textGrey),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withValues(alpha: 0.07),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: Colors.orange.withValues(alpha: 0.25)),
-                          ),
-                          child: Column(
-                            children: [
-                              const Icon(Icons.warning_amber_rounded,
-                                  color: Colors.orange, size: 22),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${issue.stillThereCount}',
-                                style: const TextStyle(
-                                  color: Colors.orange,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                ),
-                              ),
-                              const Text(
-                                'Still There',
-                                style: TextStyle(
-                                    color: Colors.orange, fontSize: 11),
-                              ),
-                            ],
-                          ),
-                        ),
+
+                      // ── Photos ──────────────────────────────────────────
+                      _buildPhotoStrip(context, issue.imageUrls),
+                      const Divider(height: 35),
+
+                      // ── AI Analysis ─────────────────────────────────────
+                      _buildAiSection(issue),
+                      const SizedBox(height: 16),
+
+                      // ── AI History ──────────────────────────────────────
+                      _buildAiHistorySection(
+                        aiHistory: aiHistory,
+                        expanded: historyExpanded,
+                        onToggle: () => setSheetState(
+                            () => historyExpanded = !historyExpanded),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.07),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: Colors.green.withValues(alpha: 0.25)),
+                      const SizedBox(height: 25),
+
+                      // ── Done button ─────────────────────────────────────
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.green,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          child: Column(
-                            children: [
-                              const Icon(Icons.check_circle_outline,
-                                  color: Colors.green, size: 22),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${issue.fixedCount}',
-                                style: const TextStyle(
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                ),
-                              ),
-                              const Text(
-                                'Fixed',
-                                style: TextStyle(
-                                    color: Colors.green, fontSize: 11),
-                              ),
-                            ],
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text(
+                            'Done',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'You cannot vote on your own report.',
-                    style: TextStyle(fontSize: 11, color: AppColors.textGrey),
-                  ),
-                  _buildPhotoStrip(context, issue.imageUrls),
-                  const Divider(height: 35),
-                  _buildAiSection(issue),
-                  const SizedBox(height: 16),
-                  // ── AI History ───────────────────────────────────────
-                  _buildAiHistorySection(
-                    aiHistory: aiHistory,
-                    expanded: historyExpanded,
-                    onToggle: () => setSheetState(
-                        () => historyExpanded = !historyExpanded),
-                  ),
-                  const SizedBox(height: 25),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.green,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        "Done",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  ],
                 ),
               ),
-            )); // end DraggableScrollableSheet + PopScope
+            );
           },
         );
       },
