@@ -133,6 +133,24 @@ class ReportService {
   }
 
   // -------------------------------------------------------------------------
+  // GET /api/report/{id}  — single report (used for polling until AI finishes)
+  // -------------------------------------------------------------------------
+  Future<Map<String, dynamic>> getReportById(String reportId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/$reportId'),
+        headers: await _authHeaders(),
+      );
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': jsonDecode(response.body)};
+      }
+      return {'success': false, 'message': 'Report not found.', 'data': null};
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect.', 'data': null};
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // GET /api/report/all
   //
   // Returns a list of report JSON maps. The backend is currently a stub that
@@ -168,6 +186,33 @@ class ReportService {
         'message': 'Could not connect to server.',
         'data': null,
       };
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // GET /api/report/{id}/ai-history
+  // -------------------------------------------------------------------------
+  Future<Map<String, dynamic>> getAiHistory(String reportId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/$reportId/ai-history'),
+        headers: await _authHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final body = response.body.trim();
+        if (body.isEmpty || body == 'null') {
+          return {'success': true, 'data': <dynamic>[]};
+        }
+        final decoded = jsonDecode(body);
+        if (decoded is List) {
+          return {'success': true, 'data': decoded};
+        }
+        return {'success': true, 'data': <dynamic>[]};
+      }
+      return {'success': false, 'message': 'Failed to load AI history.', 'data': null};
+    } catch (_) {
+      return {'success': false, 'message': 'Could not connect to server.', 'data': null};
     }
   }
 

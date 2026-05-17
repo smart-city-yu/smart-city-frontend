@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/map_issue.dart';
 import '../parsers/map_issue_parser.dart';
 import '../services/report_service.dart';
@@ -105,6 +107,476 @@ void _showFullImage(BuildContext context, List<String> urls, int initial) {
     ),
   );
 }
+
+// ── AI Analysis card ────────────────────────────────────────────────────────
+
+Widget _buildAiSection(MapIssue issue) {
+  final bool analysed =
+      issue.revalidationCount > 0 || (issue.validationReason?.isNotEmpty ?? false);
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // ── Header row ──────────────────────────────────────────────────────
+      Row(
+        children: [
+          const Icon(Icons.auto_awesome, color: AppColors.info, size: 22),
+          const SizedBox(width: 8),
+          const Text(
+            'AI Smart Analysis',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.info,
+            ),
+          ),
+          const Spacer(),
+          if (analysed)
+            Text(
+              'Run ${issue.revalidationCount}×',
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textGrey,
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(height: 14),
+
+      if (!analysed) ...[
+        // ── Pending state ────────────────────────────────────────────────
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.info.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(15),
+            border:
+                Border.all(color: AppColors.info.withValues(alpha: 0.15)),
+          ),
+          child: const Row(
+            children: [
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.info,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'AI analysis is in progress…',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textGrey,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ] else ...[
+        // ── Priority badge ───────────────────────────────────────────────
+        if (issue.priority != null) ...[
+          _buildPriorityRow(issue.priority!, issue.prioritySetBy),
+          const SizedBox(height: 14),
+        ],
+
+        // ── Confidence bar ───────────────────────────────────────────────
+        _buildConfidenceBar(issue.validationScore),
+        const SizedBox(height: 14),
+
+        // ── Reason card ──────────────────────────────────────────────────
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.info.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(14),
+            border:
+                Border.all(color: AppColors.info.withValues(alpha: 0.12)),
+          ),
+          child: Text(
+            issue.validationReason?.isNotEmpty == true
+                ? issue.validationReason!
+                : 'No reason provided by AI.',
+            style: const TextStyle(
+              fontSize: 14,
+              height: 1.6,
+              color: AppColors.textDark,
+            ),
+          ),
+        ),
+      ],
+    ],
+  );
+}
+
+Widget _buildPriorityRow(String priority, String? setBy) {
+  final Color color;
+  final String label;
+  final IconData icon;
+
+  switch (priority.toUpperCase()) {
+    case 'CRITICAL':
+      color = AppColors.red;
+      label = 'CRITICAL';
+      icon = Icons.emergency_rounded;
+      break;
+    case 'HIGH':
+      color = AppColors.orange;
+      label = 'HIGH';
+      icon = Icons.warning_rounded;
+      break;
+    case 'MEDIUM':
+      color = AppColors.info;
+      label = 'MEDIUM';
+      icon = Icons.info_rounded;
+      break;
+    case 'LOW':
+    default:
+      color = AppColors.green;
+      label = 'LOW';
+      icon = Icons.check_circle_rounded;
+      break;
+  }
+
+  final String owner =
+      (setBy?.toUpperCase() == 'ADMIN') ? 'Set by Admin' : 'Set by AI';
+
+  return Row(
+    children: [
+      Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              'Priority: $label',
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(width: 10),
+      Text(
+        owner,
+        style: const TextStyle(
+          fontSize: 11,
+          color: AppColors.textGrey,
+        ),
+      ),
+    ],
+  );
+}
+
+Widget _buildConfidenceBar(double score) {
+  final pct = (score * 100).round();
+  final Color barColor = score >= 0.8
+      ? AppColors.green
+      : score >= 0.6
+          ? AppColors.orange
+          : AppColors.red;
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'AI Confidence',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textDark,
+            ),
+          ),
+          Text(
+            '$pct%',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: barColor,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 6),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: LinearProgressIndicator(
+          value: score.clamp(0.0, 1.0),
+          minHeight: 8,
+          backgroundColor: Colors.grey.shade200,
+          valueColor: AlwaysStoppedAnimation<Color>(barColor),
+        ),
+      ),
+    ],
+  );
+}
+
+// ── AI History timeline ──────────────────────────────────────────────────────
+
+Widget _buildAiHistorySection({
+  required List<Map<String, dynamic>> aiHistory,
+  required bool expanded,
+  required VoidCallback onToggle,
+}) {
+  if (aiHistory.isEmpty) return const SizedBox.shrink();
+
+  final fmt = DateFormat('MMM d, y  HH:mm');
+
+  Color priorityColor(String? p) {
+    switch ((p ?? '').toUpperCase()) {
+      case 'CRITICAL': return AppColors.red;
+      case 'HIGH':     return AppColors.orange;
+      case 'MEDIUM':   return AppColors.info;
+      default:         return AppColors.green;
+    }
+  }
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // ── Collapse/expand header ────────────────────────────────────────
+      InkWell(
+        onTap: onToggle,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              const Icon(Icons.history, color: AppColors.textGrey, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'AI History (${aiHistory.length} run${aiHistory.length == 1 ? '' : 's'})',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textGrey,
+                ),
+              ),
+              const Spacer(),
+              Icon(
+                expanded ? Icons.expand_less : Icons.expand_more,
+                color: AppColors.textGrey,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      if (expanded) ...[
+        const SizedBox(height: 12),
+        // ── Timeline entries ────────────────────────────────────────────
+        ...aiHistory.asMap().entries.map((e) {
+          final i   = e.key;
+          final run = e.value;
+          final isValid    = run['valid'] as bool? ?? true;
+          final confidence = ((run['confidence'] as num?)?.toDouble() ?? 0.0);
+          final pct        = (confidence * 100).round();
+          final reason     = run['reason'] as String? ?? '';
+          final priority   = run['priority'] as String?;
+          final rawDate    = run['ranAt'] as String? ?? '';
+          final trigger    = run['trigger'] as String? ?? 'SUBMIT';
+          String dateStr   = '';
+          try {
+            dateStr = fmt.format(DateTime.parse(rawDate).toLocal());
+          } catch (_) {}
+
+          // Human-readable trigger label
+          final String triggerLabel;
+          final Color  triggerColor;
+          switch (trigger) {
+            case 'VOTE_MILESTONE_3':
+              triggerLabel = '↑ Re-analyzed · 3 community votes';
+              triggerColor = Colors.orange;
+              break;
+            case 'VOTE_MILESTONE_5':
+              triggerLabel = '↑ Re-analyzed · 5 community votes';
+              triggerColor = Colors.deepOrange;
+              break;
+            default:
+              triggerLabel = 'Initial analysis';
+              triggerColor = AppColors.textGrey;
+          }
+
+          final runPriorityColor = priorityColor(priority);
+          final isLast = i == aiHistory.length - 1;
+
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Left timeline rail ──────────────────────────────────
+                SizedBox(
+                  width: 24,
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: isValid ? AppColors.green : AppColors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      if (!isLast)
+                        Expanded(
+                          child: Container(
+                            width: 2,
+                            color: AppColors.border,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // ── Run card ────────────────────────────────────────────
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundLight,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Trigger label
+                          Row(
+                            children: [
+                              Icon(
+                                trigger == 'SUBMIT'
+                                    ? Icons.auto_awesome
+                                    : Icons.people_alt_outlined,
+                                size: 11,
+                                color: triggerColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                triggerLabel,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: triggerColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          // Date + valid badge
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  dateStr,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textGrey,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: (isValid ? AppColors.green : AppColors.red)
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  isValid ? '✓ Valid' : '✗ Invalid',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: isValid
+                                        ? AppColors.green
+                                        : AppColors.red,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // Priority + confidence
+                          Row(
+                            children: [
+                              if (priority != null) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: runPriorityColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                        color: runPriorityColor
+                                            .withValues(alpha: 0.3)),
+                                  ),
+                                  child: Text(
+                                    priority,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: runPriorityColor,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Text(
+                                'Confidence: $pct%',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textGrey,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (reason.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              reason,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textDark,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    ],
+  );
+}
+
+// ── Reports screen ──────────────────────────────────────────────────────────
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -295,8 +767,71 @@ class _ReportsScreenState extends State<ReportsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       builder: (context) {
+        List<Map<String, dynamic>> aiHistory = [];
+        bool historyLoading = true;
+        bool historyExpanded = false;
+        Timer? pollingTimer;
+
+        // Fetch fresh report data + AI history, update state
+        void refreshReport(StateSetter setSheetState) {
+          final reportId = myReports[index].id;
+
+          // Fetch latest report fields
+          myService.getReportById(reportId).then((res) {
+            if (!context.mounted) return;
+            if (res['success'] == true && res['data'] != null) {
+              final updated = MapIssueParser.fromJson(
+                  res['data'] as Map<String, dynamic>);
+              setSheetState(() {
+                myReports[index] = updated;
+              });
+              // Also update the list screen
+              setState(() {
+                myReports[index] = updated;
+              });
+            }
+          });
+
+          // Fetch AI history
+          myService.getAiHistory(reportId).then((res) {
+            if (!context.mounted) return;
+            setSheetState(() {
+              if (res['success'] == true) {
+                aiHistory = (res['data'] as List<dynamic>? ?? [])
+                    .cast<Map<String, dynamic>>();
+              }
+            });
+          });
+        }
+
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            // Load data on first build
+            if (historyLoading) {
+              historyLoading = false;
+              refreshReport(setSheetState);
+
+              // Auto-refresh every 4s while AI hasn't run yet
+              if (myReports[index].revalidationCount == 0) {
+                pollingTimer = Timer.periodic(
+                  const Duration(seconds: 4),
+                  (_) {
+                    if (!context.mounted) {
+                      pollingTimer?.cancel();
+                      return;
+                    }
+                    // Stop polling once AI has run
+                    if (myReports[index].revalidationCount > 0) {
+                      pollingTimer?.cancel();
+                      pollingTimer = null;
+                      return;
+                    }
+                    refreshReport(setSheetState);
+                  },
+                );
+              }
+            }
+
             MapIssue issue = myReports[index];
 
             Color badgeColor = Colors.orange;
@@ -314,7 +849,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
               badgeText = 'Under Review';
             }
 
-            return DraggableScrollableSheet(
+            return PopScope(
+              onPopInvokedWithResult: (_, __) => pollingTimer?.cancel(),
+              child: DraggableScrollableSheet(
               expand: false,
               initialChildSize: 0.75,
               minChildSize: 0.4,
@@ -408,74 +945,33 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
+                  // ── Community votes — read-only for the report owner ──
+                  Row(
+                    children: [
+                      const Icon(Icons.people_outline,
+                          color: AppColors.textGrey, size: 16),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Community votes',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textGrey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       Expanded(
-<<<<<<< HEAD
-                        child: GestureDetector(
-                          onTap: issue.isVoted
-                              ? null
-                              : () async {
-                            bool ok = await myService.voteOnReport(
-                              reportId: issue.id,
-                              voteType: 'stillThere',
-                            );
-                            if (ok) {
-                              setSheetState(() {
-                                myReports[index] = MapIssue(
-                                  id: issue.id,
-                                  emoji: issue.emoji,
-                                  title: issue.title,
-                                  sub: issue.sub,
-                                  desc: issue.desc,
-                                  color: issue.color,
-                                  position: issue.position,
-                                  stillThereCount: issue.stillThereCount + 1,
-                                  fixedCount: issue.fixedCount,
-                                  isVoted: true,
-                                );
-                              });
-                              setState(() {});
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: issue.isVoted ? 0.05 : 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(Icons.warning_amber_rounded,
-                                    color: issue.isVoted ? Colors.grey : Colors.orange,
-                                    size: 22),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "${issue.stillThereCount}",
-                                  style: TextStyle(
-                                    color: issue.isVoted ? Colors.grey : Colors.orange,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                Text(
-                                  "Still There",
-                                  style: TextStyle(
-                                    color: issue.isVoted ? Colors.grey : Colors.orange,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
-                            ),
-=======
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
-                            color: Colors.orange.withValues(alpha: 0.1),
+                            color: Colors.orange.withValues(alpha: 0.07),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: Colors.orange.withValues(alpha: 0.3)),
+                                color: Colors.orange.withValues(alpha: 0.25)),
                           ),
                           child: Column(
                             children: [
@@ -483,90 +979,31 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   color: Colors.orange, size: 22),
                               const SizedBox(height: 4),
                               Text(
-                                "${issue.stillThereCount}",
+                                '${issue.stillThereCount}',
                                 style: const TextStyle(
                                   color: Colors.orange,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                  fontSize: 18,
                                 ),
                               ),
                               const Text(
-                                "Still There",
+                                'Still There',
                                 style: TextStyle(
                                     color: Colors.orange, fontSize: 11),
                               ),
                             ],
->>>>>>> c97f44e (Edit Last Version Before Last uploaded Version From Leen)
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-<<<<<<< HEAD
-                        child: GestureDetector(
-                          onTap: issue.isVoted
-                              ? null
-                              : () async {
-                            bool ok = await myService.voteOnReport(
-                              reportId: issue.id,
-                              voteType: 'fixed',
-                            );
-                            if (ok) {
-                              setSheetState(() {
-                                myReports[index] = MapIssue(
-                                  id: issue.id,
-                                  emoji: issue.emoji,
-                                  title: issue.title,
-                                  sub: issue.sub,
-                                  desc: issue.desc,
-                                  color: issue.color,
-                                  position: issue.position,
-                                  stillThereCount: issue.stillThereCount,
-                                  fixedCount: issue.fixedCount + 1,
-                                  isVoted: true,
-                                );
-                              });
-                              setState(() {});
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: issue.isVoted ? 0.05 : 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(Icons.check_circle_outline,
-                                    color: issue.isVoted ? Colors.grey : Colors.green,
-                                    size: 22),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "${issue.fixedCount}",
-                                  style: TextStyle(
-                                    color: issue.isVoted ? Colors.grey : Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                Text(
-                                  "Fixed",
-                                  style: TextStyle(
-                                    color: issue.isVoted ? Colors.grey : Colors.green,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
-                            ),
-=======
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.1),
+                            color: Colors.green.withValues(alpha: 0.07),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: Colors.green.withValues(alpha: 0.3)),
+                                color: Colors.green.withValues(alpha: 0.25)),
                           ),
                           child: Column(
                             children: [
@@ -574,75 +1011,39 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   color: Colors.green, size: 22),
                               const SizedBox(height: 4),
                               Text(
-                                "${issue.fixedCount}",
+                                '${issue.fixedCount}',
                                 style: const TextStyle(
                                   color: Colors.green,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                  fontSize: 18,
                                 ),
                               ),
                               const Text(
-                                "Fixed",
+                                'Fixed',
                                 style: TextStyle(
                                     color: Colors.green, fontSize: 11),
                               ),
                             ],
->>>>>>> c97f44e (Edit Last Version Before Last uploaded Version From Leen)
                           ),
                         ),
                       ),
                     ],
                   ),
-<<<<<<< HEAD
-                  if (issue.isVoted)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: Text(
-                        "✅ You already voted on this report",
-                        style: TextStyle(fontSize: 12, color: AppColors.textGrey),
-                      ),
-=======
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: Text(
-                      "Community vote counts — tap a report on the map to vote",
-                      style: TextStyle(fontSize: 11, color: AppColors.textGrey),
->>>>>>> c97f44e (Edit Last Version Before Last uploaded Version From Leen)
-                    ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'You cannot vote on your own report.',
+                    style: TextStyle(fontSize: 11, color: AppColors.textGrey),
                   ),
                   _buildPhotoStrip(context, issue.imageUrls),
                   const Divider(height: 35),
-                  const Row(
-                    children: [
-                      Icon(Icons.auto_awesome, color: AppColors.info, size: 22),
-                      SizedBox(width: 8),
-                      Text(
-                        "AI Smart Analysis",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.info,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: AppColors.info.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: AppColors.info.withValues(alpha: 0.1)),
-                    ),
-                    child: Text(
-                      issue.desc.isEmpty ? "AI analysis not available yet." : issue.desc,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        height: 1.6,
-                        color: AppColors.textDark,
-                      ),
-                    ),
+                  _buildAiSection(issue),
+                  const SizedBox(height: 16),
+                  // ── AI History ───────────────────────────────────────
+                  _buildAiHistorySection(
+                    aiHistory: aiHistory,
+                    expanded: historyExpanded,
+                    onToggle: () => setSheetState(
+                        () => historyExpanded = !historyExpanded),
                   ),
                   const SizedBox(height: 25),
                   SizedBox(
@@ -668,7 +1069,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   ],
                 ),
               ),
-            );
+            )); // end DraggableScrollableSheet + PopScope
           },
         );
       },

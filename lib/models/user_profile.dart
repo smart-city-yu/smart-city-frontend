@@ -1,10 +1,12 @@
 class UserProfile {
+  final int? id;
   final String initials;
   final String fullName;
   final String email;
   final String phone;
 
   const UserProfile({
+    this.id,
     required this.initials,
     required this.fullName,
     required this.email,
@@ -20,6 +22,7 @@ class UserProfile {
             ? fullName[0].toUpperCase()
             : '?';
     return UserProfile(
+      id: (json['id'] as num?)?.toInt(),
       initials: initials,
       fullName: fullName,
       email: json['email'] as String? ?? '',
