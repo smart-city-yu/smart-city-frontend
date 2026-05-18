@@ -217,6 +217,104 @@ class ReportService {
   }
 
   // -------------------------------------------------------------------------
+  // GET /api/report/all/summary
+  //
+  // Returns clustered summary markers for the given viewport when zoom < 12.
+  // -------------------------------------------------------------------------
+  Future<Map<String, dynamic>> getViewportSummary({
+    required double northLat,
+    required double northLng,
+    required double southLat,
+    required double southLng,
+    required int zoom,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/all/summary').replace(
+        queryParameters: {
+          'northLat': northLat.toString(),
+          'northLng': northLng.toString(),
+          'southLat': southLat.toString(),
+          'southLng': southLng.toString(),
+          'zoom': zoom.toString(),
+        },
+      );
+      final response = await http.get(uri, headers: await _authHeaders());
+
+      if (response.statusCode == 200) {
+        final body = response.body.trim();
+        if (body.isEmpty || body == 'null') {
+          return {'success': true, 'data': <dynamic>[]};
+        }
+        final decoded = jsonDecode(body);
+        if (decoded is List) {
+          return {'success': true, 'data': decoded};
+        }
+        return {'success': true, 'data': <dynamic>[]};
+      }
+      return {
+        'success': false,
+        'message': 'Failed to load summary.',
+        'data': null,
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message': 'Could not connect to server.',
+        'data': null,
+      };
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // GET /api/report/all/viewport
+  //
+  // Returns the full report list within the viewport when zoom >= 12.
+  // -------------------------------------------------------------------------
+  Future<Map<String, dynamic>> getViewportReports({
+    required double northLat,
+    required double northLng,
+    required double southLat,
+    required double southLng,
+    required int zoom,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/all/viewport').replace(
+        queryParameters: {
+          'northLat': northLat.toString(),
+          'northLng': northLng.toString(),
+          'southLat': southLat.toString(),
+          'southLng': southLng.toString(),
+          'zoom': zoom.toString(),
+        },
+      );
+      final response = await http.get(uri, headers: await _authHeaders());
+
+      if (response.statusCode == 200) {
+        final body = response.body.trim();
+        if (body.isEmpty || body == 'null') {
+          return {'success': true, 'data': <dynamic>[]};
+        }
+        final decoded = jsonDecode(body);
+        if (decoded is List) {
+          return {'success': true, 'data': decoded};
+        }
+        return {'success': true, 'data': <dynamic>[]};
+      }
+      return {
+        'success': false,
+        'message': 'Failed to load reports.',
+        'data': null,
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message': 'Could not connect to server.',
+        'data': null,
+      };
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // POST /api/report/vote
   //
   // Params (query):
