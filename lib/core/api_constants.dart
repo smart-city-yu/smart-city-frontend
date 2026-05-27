@@ -11,3 +11,11 @@
 // the email-verification links embedded in outgoing emails point to the same host.
 // ─────────────────────────────────────────────────────────────────────────────
 const String kApiHost = 'http://74.234.200.122:8080';
+// Cloudflare tunnel — works for both emulator and real device.
+// Replace with a new tunnel URL each time you restart cloudflared.
+
+// MapTiler API key — get a free key at https://maptiler.com
+const String kMapTilerKey = 'T1F9sGhskfSK6lJGRyHK';
+
+const String kMapTilerStyleUrl =
+    'https://api.maptiler.com/maps/streets-v2/style.json?key=$kMapTilerKey';

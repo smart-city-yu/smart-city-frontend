@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../core/app_colors.dart';
@@ -42,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _selectedNavIndex = 0;
 
-  final MapController _mapController = MapController();
+  MaplibreMapController? _mapController;
   LatLng? _currentLocation;
 
   List<MapIssue> _mapIssues = [];
@@ -166,7 +165,9 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       if (!mounted) return;
       setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
-      _mapController.move(_currentLocation!, 16);
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(_currentLocation!, 16),
+      );
     } catch (e) {
       if (mounted) _snack('Unable to get location. Check GPS settings.');
     } finally {
@@ -174,17 +175,26 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _onMapCreated(MaplibreMapController controller) {
+    setState(() => _mapController = controller);
+  }
+
   void _recenterMap() {
     if (_currentLocation != null) {
-      _mapController.move(_currentLocation!, 16);
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(_currentLocation!, 16),
+      );
     } else {
       _loadLocation();
     }
   }
 
-  void _onMapReady() {
-    final camera = _mapController.camera;
-    _fetchForViewport(camera.visibleBounds, camera.zoom);
+  Future<void> _onMapReady() async {
+    if (_mapController == null) return;
+    final bounds = await _mapController!.getVisibleRegion();
+    final zoom = _mapController!.cameraPosition?.zoom ?? 7.5;
+    if (!mounted) return;
+    _fetchForViewport(bounds, zoom);
   }
 
   void _onMapMove(LatLngBounds bounds, double zoom) {
@@ -200,10 +210,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (zoom < 12) {
       final result = await _reportService.getViewportSummary(
-        northLat: bounds.north,
-        northLng: bounds.east,
-        southLat: bounds.south,
-        southLng: bounds.west,
+        northLat: bounds.northeast.latitude,
+        northLng: bounds.northeast.longitude,
+        southLat: bounds.southwest.latitude,
+        southLng: bounds.southwest.longitude,
         zoom: zoom.floor(),
       );
       if (!mounted || gen != _fetchGeneration) return;
@@ -221,10 +231,10 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       // zoom >= 12: fetch real reports from the viewport endpoint
       final result = await _reportService.getViewportReports(
-        northLat: bounds.north,
-        northLng: bounds.east,
-        southLat: bounds.south,
-        southLng: bounds.west,
+        northLat: bounds.northeast.latitude,
+        northLng: bounds.northeast.longitude,
+        southLat: bounds.southwest.latitude,
+        southLng: bounds.southwest.longitude,
         zoom: zoom.floor(),
       );
       if (!mounted || gen != _fetchGeneration) return;
@@ -364,10 +374,21 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
 
     if (result['success'] == true) {
-      _mapController.move(_currentLocation!, 16);
-      // Reload all reports from server so the real marker (with correct ID)
-      // replaces any stale data — avoids a fake local ID that would 404 on vote.
-      _loadReports();
+      setState(() {
+        _mapIssues.add(MapIssue(
+          id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+          emoji: category.emoji,
+          title: '${category.displayName} Report',
+          sub: 'Reported just now',
+          desc: '',
+          color: category.color,
+          position: _currentLocation!,
+          subProblem: subProblem,
+        ));
+      });
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(_currentLocation!, 16),
+      );
 
       showSuccessDialog(
         context: context,
@@ -417,9 +438,11 @@ class _HomeScreenState extends State<HomeScreen> {
           _pathPoints = [];
         });
 
-        _mapController.move(
-          LatLng(places.first.lat, places.first.lon),
-          14,
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng(places.first.lat, places.first.lon),
+            14,
+          ),
         );
       },
     );
@@ -438,9 +461,11 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    final dist = const Distance()(
-      _currentLocation!,
-      LatLng(place.lat, place.lon),
+    final dist = Geolocator.distanceBetween(
+      _currentLocation!.latitude,
+      _currentLocation!.longitude,
+      place.lat,
+      place.lon,
     );
 
     showPlaceDetailsSheet(
@@ -479,7 +504,10 @@ class _HomeScreenState extends State<HomeScreen> {
             nodes.map((n) => LatLng(n.latitude, n.longitude)).toList();
         _placeMarkers = [];
       });
-      _mapController.move(_currentLocation!, 15);
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(_currentLocation!, 15),
+      );
+    }
 
       showSuccessDialog(
         context: context,
@@ -503,7 +531,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return ReportsScreen();    }
 
     return HomeMapView(
-      mapController: _mapController,
       mapIssues: _mapIssues,
       summaryMarkers: _summaryMarkers,
       placeMarkers: _placeMarkers,
@@ -516,6 +543,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTapIssue: _showIssueSheet,
       onTapPlace: _onTapPlace,
       pathPoints: _pathPoints,
+      onMapCreated: _onMapCreated,
       onMapMove: _onMapMove,
       onMapReady: _onMapReady,
     );
