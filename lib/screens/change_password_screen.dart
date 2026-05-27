@@ -52,6 +52,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     if (result['success'] == true) {
       Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password changed successfully.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
     } else {
       setState(() => _errorMessage = result['message'] as String?);
     }

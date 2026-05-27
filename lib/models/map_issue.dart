@@ -86,8 +86,8 @@ class MapIssue {
       desc: json['description'] as String? ?? '',
       color: cat?.color ?? const Color(0xFF607D8B),
       position: LatLng(
-        (json['lat'] as num).toDouble(),
-        (json['lon'] as num).toDouble(),
+        (json['lat'] as num?)?.toDouble() ?? 0.0,
+        (json['lon'] as num?)?.toDouble() ?? 0.0,
       ),
       stillThereCount: (json['stillVotes'] as num?)?.toInt() ?? 0,
       fixedCount: (json['fixedVotes'] as num?)?.toInt() ?? 0,

@@ -564,13 +564,23 @@ class _ReportsScreenState extends State<ReportsScreen> {
   bool loading = true;
   String errorMsg = '';
 
+  /// Held here so dispose() can cancel it if the user switches tabs
+  /// while a details sheet is open.
+  Timer? _pollingTimer;
+
   @override
   void initState() {
     super.initState();
     fetchReports();
   }
 
-  void fetchReports() async {
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> fetchReports() async {
     setState(() {
       loading = true;
       errorMsg = '';
@@ -654,7 +664,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     return RefreshIndicator(
       color: AppColors.green,
-      onRefresh: () async => fetchReports(),
+      onRefresh: fetchReports,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         itemCount: myReports.length,
@@ -730,6 +740,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   void showDetails(int index) {
+    // Capture the ID up-front; index may become stale if list is refreshed.
+    final String capturedId = myReports[index].id;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -741,22 +754,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
         List<Map<String, dynamic>> aiHistory = [];
         bool historyLoading = true;
         bool historyExpanded = false;
-        Timer? pollingTimer;
 
         void refreshReport(StateSetter setSheetState) {
-          final reportId = myReports[index].id;
-
-          myService.getReportById(reportId).then((res) {
+          // Fetch latest report fields
+          myService.getReportById(capturedId).then((res) {
             if (!context.mounted) return;
             if (res['success'] == true && res['data'] != null) {
               final updated = MapIssueParser.fromJson(
                   res['data'] as Map<String, dynamic>);
-              setSheetState(() => myReports[index] = updated);
-              setState(() => myReports[index] = updated);
+              // Use ID-based lookup — index may have shifted after a pull-to-refresh
+              final idx = myReports.indexWhere((r) => r.id == capturedId);
+              if (idx == -1) return;
+              setSheetState(() => myReports[idx] = updated);
+              setState(() => myReports[idx] = updated);
             }
           });
 
-          myService.getAiHistory(reportId).then((res) {
+          // Fetch AI history
+          myService.getAiHistory(capturedId).then((res) {
             if (!context.mounted) return;
             setSheetState(() {
               if (res['success'] == true) {
@@ -773,17 +788,31 @@ class _ReportsScreenState extends State<ReportsScreen> {
               historyLoading = false;
               refreshReport(setSheetState);
 
-              if (myReports[index].revalidationCount == 0) {
-                pollingTimer = Timer.periodic(
+              // Auto-refresh every 4s while AI hasn't run yet
+              final currentIdx =
+                  myReports.indexWhere((r) => r.id == capturedId);
+              if (currentIdx != -1 &&
+                  myReports[currentIdx].revalidationCount == 0) {
+                _pollingTimer?.cancel(); // cancel any previous leaked timer
+                _pollingTimer = Timer.periodic(
                   const Duration(seconds: 4),
                   (_) {
                     if (!context.mounted) {
-                      pollingTimer?.cancel();
+                      _pollingTimer?.cancel();
                       return;
                     }
-                    if (myReports[index].revalidationCount > 0) {
-                      pollingTimer?.cancel();
-                      pollingTimer = null;
+                    // Safe lookup by ID — never by raw index
+                    final idx =
+                        myReports.indexWhere((r) => r.id == capturedId);
+                    if (idx == -1) {
+                      _pollingTimer?.cancel();
+                      _pollingTimer = null;
+                      return;
+                    }
+                    // Stop polling once AI has run
+                    if (myReports[idx].revalidationCount > 0) {
+                      _pollingTimer?.cancel();
+                      _pollingTimer = null;
                       return;
                     }
                     refreshReport(setSheetState);
@@ -792,7 +821,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
               }
             }
 
-            final issue = myReports[index];
+            // Use ID-based lookup for the displayed issue — safe after refresh.
+            final safeIdx = myReports.indexWhere((r) => r.id == capturedId);
+            final MapIssue issue = safeIdx != -1
+                ? myReports[safeIdx]
+                : myReports[myReports.length > index ? index : 0];
 
             Color badgeColor = Colors.orange;
             String badgeText = 'Under Processing';
@@ -810,7 +843,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
             }
 
             return PopScope(
-              onPopInvokedWithResult: (_, __) => pollingTimer?.cancel(),
+              onPopInvokedWithResult: (didPop, result) {
+                _pollingTimer?.cancel();
+                _pollingTimer = null;
+              },
               child: DraggableScrollableSheet(
                 expand: false,
                 initialChildSize: 0.75,

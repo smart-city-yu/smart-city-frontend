@@ -20,8 +20,7 @@ class HomeBottomNavBar extends StatelessWidget {
         children: [
           _item(Icons.home_filled, 'Home', 0),
           _item(Icons.description_outlined, 'Reports', 1),
-          _item(Icons.notifications_none, 'Alerts', 2),
-          _item(Icons.person_outline, 'Profile', 3),
+          _item(Icons.person_outline, 'Profile', 2),
         ],
       ),
     );

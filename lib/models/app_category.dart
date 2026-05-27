@@ -70,6 +70,13 @@ const List<AppCategory> reportCategories = [
     emoji: '❓',
     color: Color(0xFF607D8B),
   ),
+  AppCategory(
+    backendValue: 'dinasore',
+    displayName: 'Dinasore',
+    emoji: '❓',
+    color: Color(0xFF9AD872),
+  ),
+
 ];
 
 // ---------------------------------------------------------------------------

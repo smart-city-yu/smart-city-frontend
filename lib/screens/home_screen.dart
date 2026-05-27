@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -243,6 +242,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _loadReports() async {
+    final result = await _reportService.getAllReports();
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final list = result['data'] as List<dynamic>;
+      setState(() {
+        _mapIssues = list
+            .map((j) => MapIssue.fromJson(j as Map<String, dynamic>))
+            .toList();
+      });
+    }
+  }
+
   Future<void> _logout() async {
     await _authService.logout();
     if (mounted) {
@@ -352,19 +364,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
 
     if (result['success'] == true) {
-      setState(() {
-        _mapIssues.add(MapIssue(
-          id: 'local_${DateTime.now().millisecondsSinceEpoch}',
-          emoji: category.emoji,
-          title: '${category.displayName} Report',
-          sub: 'Reported just now',
-          desc: '',
-          color: category.color,
-          position: _currentLocation!,
-          subProblem: subProblem,
-        ));
-      });
       _mapController.move(_currentLocation!, 16);
+      // Reload all reports from server so the real marker (with correct ID)
+      // replaces any stale data — avoids a fake local ID that would 404 on vote.
+      _loadReports();
 
       showSuccessDialog(
         context: context,
@@ -477,14 +480,15 @@ class _HomeScreenState extends State<HomeScreen> {
         _placeMarkers = [];
       });
       _mapController.move(_currentLocation!, 15);
-    }
 
-    showSuccessDialog(
-      context: context,
-      title: 'Navigation Started',
-      message:
-      'Routing to ${place.name}. Follow the directions on the map.',
-    );
+      showSuccessDialog(
+        context: context,
+        title: 'Navigation Started',
+        message: 'Routing to ${place.name}. Follow the directions on the map.',
+      );
+    } else {
+      _snack(result['message'] as String? ?? 'Could not calculate route.');
+    }
   }
 
   void _snack(String message) {
@@ -493,7 +497,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBody() {
-    if (_selectedNavIndex == 3) return const ProfileScreen();
+    if (_selectedNavIndex == 2) return const ProfileScreen();
 
     if (_selectedNavIndex == 1) {
       return ReportsScreen();    }

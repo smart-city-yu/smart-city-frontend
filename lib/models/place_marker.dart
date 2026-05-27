@@ -35,8 +35,8 @@ class PlaceMarker {
     final center = placeInfo['center'] as Map<String, dynamic>;
     return PlaceMarker(
       name: placeInfo['name'] as String? ?? category.displayName,
-      lat: (center['lat'] as num).toDouble(),
-      lon: (center['lon'] as num).toDouble(),
+      lat: (center['lat'] as num?)?.toDouble() ?? 0.0,
+      lon: (center['lon'] as num?)?.toDouble() ?? 0.0,
       category: category,
     );
   }
