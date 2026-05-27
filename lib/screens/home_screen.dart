@@ -507,7 +507,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(_currentLocation!, 15),
       );
-    }
 
       showSuccessDialog(
         context: context,

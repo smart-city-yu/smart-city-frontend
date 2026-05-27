@@ -10,7 +10,7 @@
 // After changing this value also update APP_BASE_URL in backend/.env so that
 // the email-verification links embedded in outgoing emails point to the same host.
 // ─────────────────────────────────────────────────────────────────────────────
-const String kApiHost = 'http://74.234.200.122:8080';
+const String kApiHost = 'https://conduct-audit-mines-harris.trycloudflare.com';
 // Cloudflare tunnel — works for both emulator and real device.
 // Replace with a new tunnel URL each time you restart cloudflared.
 
