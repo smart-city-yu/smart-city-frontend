@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import '../../core/app_colors.dart';
 import '../../models/map_issue.dart';
 import '../../models/place_marker.dart';
+import '../../models/report_summary.dart';
 import '../map_marker.dart';
 import '../map_place_marker.dart';
 import '../search_bar_widget.dart';
@@ -13,6 +14,7 @@ class HomeMapView extends StatelessWidget {
   final MapController mapController;
   final List<MapIssue> mapIssues;
   final List<PlaceMarker> placeMarkers;
+  final List<ReportSummary> summaryMarkers;
   final LatLng? currentLocation;
   final VoidCallback onLogout;
   final VoidCallback onRecenter;
@@ -22,6 +24,8 @@ class HomeMapView extends StatelessWidget {
   final ValueChanged<MapIssue> onTapIssue;
   final ValueChanged<PlaceMarker> onTapPlace;
   final List<LatLng> pathPoints;
+  final void Function(LatLngBounds bounds, double zoom)? onMapMove;
+  final VoidCallback? onMapReady;
 
   const HomeMapView({
     super.key,
@@ -37,23 +41,44 @@ class HomeMapView extends StatelessWidget {
     required this.onTapIssue,
     required this.onTapPlace,
     required this.pathPoints,
+    this.summaryMarkers = const [],
+    this.onMapMove,
+    this.onMapReady,
   });
 
   @override
   Widget build(BuildContext context) {
     final showingPlaces = placeMarkers.isNotEmpty;
+    final showingSummary = summaryMarkers.isNotEmpty;
 
-    return Expanded(
-      child: Stack(
+    return Stack(
         children: [
           // ── map ──────────────────────────────────────────────────────────
           FlutterMap(
             mapController: mapController,
-            options: const MapOptions(
-              initialCenter: LatLng(31.24, 36.51),
+            options: MapOptions(
+              initialCenter: const LatLng(31.24, 36.51),
               initialZoom: 7.5,
               minZoom: 6,
               maxZoom: 18,
+              onMapReady: onMapReady,
+              onMapEvent: (MapEvent event) {
+                if (onMapMove == null) return;
+                // MapEventMove covers programmatic moves (zoom buttons, recenter,
+                // mapController.move) as well as continuous gestures.
+                // The remaining types cover scroll-wheel, double-tap, and
+                // fling-end on devices where MoveEnd doesn't fire reliably.
+                if (event is MapEventMove ||
+                    event is MapEventMoveEnd ||
+                    event is MapEventFlingAnimationEnd ||
+                    event is MapEventScrollWheelZoom ||
+                    event is MapEventDoubleTapZoomEnd) {
+                  onMapMove!(
+                    event.camera.visibleBounds,
+                    event.camera.zoom,
+                  );
+                }
+              },
             ),
             children: [
               TileLayer(
@@ -74,30 +99,59 @@ class HomeMapView extends StatelessWidget {
                   ],
                 ),
 
-              // road-issue markers
-              MarkerLayer(
-                markers: [
-                  ...mapIssues.map(
-                    (issue) => Marker(
-                      point: issue.position,
-                      width: 40,
-                      height: 40,
-                      child: MapMarker(
-                        emoji: issue.emoji,
-                        color: issue.color,
-                        onTap: () => onTapIssue(issue),
+              // cluster summary markers (zoom < 12)
+              if (showingSummary)
+                MarkerLayer(
+                  markers: summaryMarkers
+                      .map(
+                        (s) => Marker(
+                          point: s.position,
+                          width: 48,
+                          height: 48,
+                          child: _ClusterMarker(count: s.count),
+                        ),
+                      )
+                      .toList(),
+                ),
+
+              // individual road-issue markers (zoom >= 12)
+              if (!showingSummary)
+                MarkerLayer(
+                  markers: [
+                    ...mapIssues.map(
+                      (issue) => Marker(
+                        point: issue.position,
+                        width: 40,
+                        height: 40,
+                        child: MapMarker(
+                          emoji: issue.emoji,
+                          color: issue.color,
+                          onTap: () => onTapIssue(issue),
+                        ),
                       ),
                     ),
-                  ),
-                  if (currentLocation != null)
+                    if (currentLocation != null)
+                      Marker(
+                        point: currentLocation!,
+                        width: 30,
+                        height: 30,
+                        child: const CurrentLocationMarker(),
+                      ),
+                  ],
+                ),
+
+              // current-location dot still visible in summary mode
+              if (showingSummary && currentLocation != null)
+                MarkerLayer(
+                  markers: [
                     Marker(
                       point: currentLocation!,
                       width: 30,
                       height: 30,
                       child: const CurrentLocationMarker(),
                     ),
-                ],
-              ),
+                  ],
+                ),
 
               // place markers (shown after Go-To category is selected)
               if (showingPlaces)
@@ -196,6 +250,32 @@ class HomeMapView extends StatelessWidget {
             ),
           ),
 
+          // ── zoom buttons ─────────────────────────────────────────────────
+          Positioned(
+            right: 14,
+            bottom: 202,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _MapControlButton(
+                  icon: Icons.add,
+                  onTap: () {
+                    final cam = mapController.camera;
+                    mapController.move(cam.center, (cam.zoom + 1).clamp(6, 18));
+                  },
+                ),
+                const SizedBox(height: 8),
+                _MapControlButton(
+                  icon: Icons.remove,
+                  onTap: () {
+                    final cam = mapController.camera;
+                    mapController.move(cam.center, (cam.zoom - 1).clamp(6, 18));
+                  },
+                ),
+              ],
+            ),
+          ),
+
           // ── recenter button ───────────────────────────────────────────────
           Positioned(
             right: 14,
@@ -228,6 +308,64 @@ class HomeMapView extends StatelessWidget {
             ),
           ),
         ],
+    );
+  }
+}
+
+class _MapControlButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _MapControlButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.white,
+      shape: const CircleBorder(),
+      elevation: 3,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: Icon(icon, color: AppColors.textGrey),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClusterMarker extends StatelessWidget {
+  final int count;
+
+  const _ClusterMarker({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.85),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x44000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          count > 999 ? '999+' : count.toString(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
