@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
@@ -253,6 +252,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _loadReports() async {
+    final result = await _reportService.getAllReports();
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final list = result['data'] as List<dynamic>;
+      setState(() {
+        _mapIssues = list
+            .map((j) => MapIssue.fromJson(j as Map<String, dynamic>))
+            .toList();
+      });
+    }
+  }
+
   Future<void> _logout() async {
     await _authService.logout();
     if (mounted) {
@@ -497,12 +509,14 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    showSuccessDialog(
-      context: context,
-      title: 'Navigation Started',
-      message:
-      'Routing to ${place.name}. Follow the directions on the map.',
-    );
+      showSuccessDialog(
+        context: context,
+        title: 'Navigation Started',
+        message: 'Routing to ${place.name}. Follow the directions on the map.',
+      );
+    } else {
+      _snack(result['message'] as String? ?? 'Could not calculate route.');
+    }
   }
 
   void _snack(String message) {
@@ -511,7 +525,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBody() {
-    if (_selectedNavIndex == 3) return const ProfileScreen();
+    if (_selectedNavIndex == 2) return const ProfileScreen();
 
     if (_selectedNavIndex == 1) {
       return ReportsScreen();    }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 import '../services/auth_service.dart';
 import '../widgets/app_widgets.dart';
+import 'reset_password_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -71,7 +72,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: AppColors.green.withOpacity(0.1),
+            color: AppColors.green.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.mark_email_read_outlined,
@@ -85,14 +86,36 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          'If ${_emailCtrl.text.trim()} is registered and verified, '
-          'you\'ll receive a password reset link shortly.\n\n'
-          'Click the link in the email to set a new password. '
-          'The link expires in 30 minutes.',
+          'A 6-digit verification code was sent to ${_emailCtrl.text.trim()}.\n\n'
+          'Enter the code in the next screen to set your new password. '
+          'The code expires in 30 minutes.',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 14, color: AppColors.textGrey, height: 1.6),
         ),
         const SizedBox(height: 32),
+        // ── Primary CTA: navigate to code entry screen ────────────────────
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    ResetPasswordScreen(email: _emailCtrl.text.trim()),
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.green,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+            ),
+            child: const Text('Enter Verification Code',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          ),
+        ),
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           height: 50,
@@ -108,7 +131,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 12),
         TextButton(
-          onPressed: () => setState(() { _emailSent = false; _errorMessage = null; }),
+          onPressed: () =>
+              setState(() { _emailSent = false; _errorMessage = null; }),
           child: const Text('Didn\'t receive it? Try again',
               style: TextStyle(color: AppColors.textGrey, fontSize: 13)),
         ),

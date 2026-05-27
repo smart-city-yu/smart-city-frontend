@@ -103,9 +103,14 @@ class RoutingService {
         final data = jsonDecode(response.body);
         return {'success': true, 'data': data};
       }
+      String errorMessage = 'Failed to calculate route (${response.statusCode}).';
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['message'] != null) errorMessage = body['message'] as String;
+      } catch (_) {}
       return {
         'success': false,
-        'message': 'Failed to calculate route (${response.statusCode}).',
+        'message': errorMessage,
         'data': null,
       };
     } catch (_) {

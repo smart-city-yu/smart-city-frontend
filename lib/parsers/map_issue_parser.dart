@@ -19,8 +19,8 @@ class MapIssueParser {
       desc: json['description']?.toString() ?? '',
       color: cat?.color ?? const Color(0xFF607D8B),
       position: LatLng(
-        (json['lat'] as num).toDouble(),
-        (json['lon'] as num).toDouble(),
+        (json['lat'] as num?)?.toDouble() ?? 0.0,
+        (json['lon'] as num?)?.toDouble() ?? 0.0,
       ),
       stillThereCount: (json['stillVotes'] as num? ?? json['stillThereCount'] as num? ?? json['still_there_count'] as num?)?.toInt() ?? 0,
       fixedCount: (json['fixedVotes'] as num? ?? json['fixedCount'] as num? ?? json['fixed_count'] as num?)?.toInt() ?? 0,
