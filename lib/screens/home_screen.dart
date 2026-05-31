@@ -157,19 +157,53 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       if (perm == LocationPermission.denied) return;
 
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 15),
-        ),
-      );
+      // ── Step 1: show the last-known position instantly (no GPS wait) ──────
+      final last = await Geolocator.getLastKnownPosition();
+      if (last != null && mounted) {
+        setState(() =>
+            _currentLocation = LatLng(last.latitude, last.longitude));
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(_currentLocation!, 16),
+        );
+      }
+
+      // ── Step 2: fresh fix — Dart .timeout() is used instead of
+      //    LocationSettings.timeLimit because Samsung Android 14 ignores
+      //    the native hint and the Future hangs forever without a Dart-level
+      //    deadline. .timeout() always throws TimeoutException on schedule.
+      Position? pos;
+      try {
+        // medium = GPS + Wi-Fi + cell — fast indoors, 20 s hard deadline
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+          ),
+        ).timeout(const Duration(seconds: 20));
+      } catch (_) {
+        // medium failed/timed out → network-only fallback (< 2 s)
+        try {
+          pos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.low,
+            ),
+          ).timeout(const Duration(seconds: 10));
+        } catch (_) {
+          // both failed — last-known from Step 1 is good enough
+          if (mounted && _currentLocation == null) {
+            _snack('Unable to get location. Check GPS settings.');
+          }
+          return;
+        }
+      }
       if (!mounted) return;
-      setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
+      setState(() => _currentLocation = LatLng(pos!.latitude, pos.longitude));
       _mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(_currentLocation!, 16),
       );
     } catch (e) {
-      if (mounted) _snack('Unable to get location. Check GPS settings.');
+      if (mounted && _currentLocation == null) {
+        _snack('Unable to get location. Check GPS settings.');
+      }
     } finally {
       _setLoading(false);
     }

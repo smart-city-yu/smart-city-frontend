@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/map_issue.dart';
@@ -671,68 +672,85 @@ class _ReportsScreenState extends State<ReportsScreen> {
         itemBuilder: (context, index) {
           final item = myReports[index];
 
-          Color badgeColor = Colors.orange;
-          String badgeText = 'Under Processing';
+          return StreamBuilder<DatabaseEvent>(
+            stream: FirebaseDatabase.instance
+                .ref('reports/${item.id}')
+                .onValue,
+            builder: (context, firebaseSnap) {
+              // Use live status from Firebase if available
+              String liveStatus = item.sub.toUpperCase();
+              if (firebaseSnap.hasData &&
+                  firebaseSnap.data?.snapshot.value != null) {
+                final d = Map<String, dynamic>.from(
+                    firebaseSnap.data!.snapshot.value as Map);
+                liveStatus =
+                    (d['status'] as String?)?.toUpperCase() ?? liveStatus;
+              }
 
-          final status = item.sub.toUpperCase();
-          if (status == 'RESOLVED') {
-            badgeColor = Colors.green;
-            badgeText = 'Resolved';
-          } else if (status == 'REJECTED') {
-            badgeColor = Colors.red;
-            badgeText = 'Rejected';
-          } else if (status == 'PENDING') {
-            badgeColor = Colors.blue;
-            badgeText = 'Under Review';
-          }
+              Color badgeColor = Colors.orange;
+              String badgeText = 'Under Processing';
 
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: InkWell(
-              onTap: () => showDetails(index),
-              borderRadius: BorderRadius.circular(18),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
+              if (liveStatus == 'RESOLVED') {
+                badgeColor = Colors.green;
+                badgeText = 'Resolved';
+              } else if (liveStatus == 'REJECTED') {
+                badgeColor = Colors.red;
+                badgeText = 'Rejected';
+              } else if (liveStatus == 'PENDING') {
+                badgeColor = Colors.blue;
+                badgeText = 'Under Review';
+              }
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: InkWell(
+                  onTap: () => showDetails(index),
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: AppColors.border.withValues(alpha: 0.5),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(item.emoji,
+                            style: const TextStyle(fontSize: 24)),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: badgeColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            badgeText,
+                            style: TextStyle(
+                              color: badgeColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Text(item.emoji, style: const TextStyle(fontSize: 24)),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: Text(
-                        item.title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: badgeColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        badgeText,
-                        style: TextStyle(
-                          color: badgeColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+              );
+            },
           );
         },
       ),

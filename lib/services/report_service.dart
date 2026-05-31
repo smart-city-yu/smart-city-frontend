@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'auth_service.dart';
 import '../core/api_constants.dart';
@@ -68,10 +69,16 @@ class ReportService {
       if (images != null) {
         for (final image in images) {
           final bytes = await image.readAsBytes();
+          // Detect MIME type so Cloudinary accepts the upload.
+          // XFile.mimeType is set by image_picker on Android/iOS;
+          // fall back to extension detection, then default to jpeg
+          // (camera captures are always JPEG on Android).
+          final mime = _resolveMime(image);
           request.files.add(http.MultipartFile.fromBytes(
             'images',
             bytes,
             filename: image.name,
+            contentType: MediaType.parse(mime),
           ));
         }
       }
@@ -311,6 +318,30 @@ class ReportService {
         'message': 'Could not connect to server.',
         'data': null,
       };
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Resolves the MIME type for a camera-captured XFile.
+  // image_picker sets XFile.mimeType on most platforms; when it's null
+  // we fall back to the file extension, then to image/jpeg as a safe default
+  // (Android camera always produces JPEG).
+  // -------------------------------------------------------------------------
+  static String _resolveMime(XFile file) {
+    final declared = file.mimeType;
+    if (declared != null && declared.isNotEmpty) return declared;
+
+    final ext = file.name.toLowerCase().split('.').last;
+    switch (ext) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      default:
+        return 'image/jpeg'; // camera default
     }
   }
 

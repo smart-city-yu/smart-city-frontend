@@ -26,8 +26,8 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 1400),
     );
 
-    _scale = Tween<double>(begin: 0.8, end: 2.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    _scale = Tween<double>(begin: 2.0, end: 0.8).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
 
     _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
