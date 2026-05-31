@@ -8,7 +8,7 @@ class CurrentLocationMarker extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0xFF4285F4).withOpacity(0.20),
+        color: const Color(0xFF4285F4).withValues(alpha: 0.20),
       ),
       child: Center(
         child: Container(

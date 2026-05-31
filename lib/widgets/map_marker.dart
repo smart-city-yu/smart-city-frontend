@@ -26,7 +26,7 @@ class MapMarker extends StatelessWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.18),
+                color: color.withValues(alpha: 0.18),
                 shape: BoxShape.circle,
               ),
             ),

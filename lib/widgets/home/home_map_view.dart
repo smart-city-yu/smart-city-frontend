@@ -25,7 +25,7 @@ class HomeMapView extends StatefulWidget {
   final ValueChanged<PlaceMarker> onTapPlace;
   final List<LatLng> pathPoints;
   final void Function(LatLngBounds bounds, double zoom)? onMapMove;
-  final void Function(MaplibreMapController controller)? onMapCreated;
+  final void Function(MapLibreMapController controller)? onMapCreated;
   final VoidCallback? onMapReady;
 
   const HomeMapView({
@@ -52,7 +52,7 @@ class HomeMapView extends StatefulWidget {
 }
 
 class _HomeMapViewState extends State<HomeMapView> {
-  MaplibreMapController? _ctrl;
+  MapLibreMapController? _ctrl;
   bool _styleLoaded = false;
 
   // Active annotations — keyed by issue id for issues, plain list for others
@@ -97,7 +97,7 @@ class _HomeMapViewState extends State<HomeMapView> {
 
   // ── Map callbacks ────────────────────────────────────────────────────────
 
-  void _onMapCreated(MaplibreMapController controller) {
+  void _onMapCreated(MapLibreMapController controller) {
     _ctrl = controller;
     _ctrl!.onSymbolTapped.add(_onSymbolTapped);
     widget.onMapCreated?.call(controller);
@@ -144,7 +144,9 @@ class _HomeMapViewState extends State<HomeMapView> {
     for (int i = 0; i < a.length; i++) {
       if (a[i].lat != b[i].lat ||
           a[i].lng != b[i].lng ||
-          a[i].count != b[i].count) return false;
+          a[i].count != b[i].count) {
+        return false;
+      }
     }
     return true;
   }
@@ -175,7 +177,7 @@ class _HomeMapViewState extends State<HomeMapView> {
     canvas.drawCircle(
       const Offset(sz / 2, sz / 2),
       sz / 2,
-      Paint()..color = color.withOpacity(0.25),
+      Paint()..color = color.withValues(alpha: 0.25),
     );
     canvas.drawCircle(
       const Offset(sz / 2, sz / 2),
@@ -203,7 +205,7 @@ class _HomeMapViewState extends State<HomeMapView> {
     canvas.drawCircle(
       const Offset(sz / 2, sz / 2),
       sz / 2 - 3,
-      Paint()..color = AppColors.primary.withOpacity(0.85),
+      Paint()..color = AppColors.primary.withValues(alpha: 0.85),
     );
     canvas.drawCircle(
       const Offset(sz / 2, sz / 2),
@@ -340,7 +342,7 @@ class _HomeMapViewState extends State<HomeMapView> {
     } else {
       for (final issue in widget.mapIssues) {
         final imgKey =
-            'issue_${issue.emoji}_${issue.color.value.toRadixString(16)}';
+            'issue_${issue.emoji}_${issue.color.toARGB32().toRadixString(16)}';
         await _ensureImage(
             imgKey, () => _renderEmojiMarker(issue.emoji, issue.color));
         final sym = await _ctrl!.addSymbol(SymbolOptions(
@@ -408,7 +410,7 @@ class _HomeMapViewState extends State<HomeMapView> {
     if (widget.pathPoints.isEmpty) return;
 
     // Convert Flutter Color(0xFF2E7D32) → '#2E7D32'
-    final hex = AppColors.primary.value.toRadixString(16).padLeft(8, '0');
+    final hex = AppColors.primary.toARGB32().toRadixString(16).padLeft(8, '0');
     _routeLine = await _ctrl!.addLine(LineOptions(
       geometry: widget.pathPoints,
       lineColor: '#${hex.substring(2)}',
@@ -427,7 +429,7 @@ class _HomeMapViewState extends State<HomeMapView> {
     return Stack(
       children: [
         // ── MapLibre map ───────────────────────────────────────────────────
-        MaplibreMap(
+        MapLibreMap(
           styleString: kMapTilerStyleUrl,
           initialCameraPosition: const CameraPosition(
             target: LatLng(31.24, 36.51),
@@ -459,7 +461,7 @@ class _HomeMapViewState extends State<HomeMapView> {
                   color: AppColors.white,
                   borderRadius: BorderRadius.circular(24),
                   border:
-                      Border.all(color: AppColors.primary.withOpacity(0.4)),
+                      Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
                   boxShadow: const [
                     BoxShadow(
                       color: Color(0x22000000),

@@ -107,6 +107,12 @@ class MapIssue {
     );
   }
 
+  /// `false` when the backend returned a null/missing lat or lon.
+  /// Those reports get placed at (0, 0) — Atlantic Ocean — and must be
+  /// filtered out before they are added to the map.
+  bool get hasValidPosition =>
+      position.latitude != 0.0 || position.longitude != 0.0;
+
   MapIssue copyWith({
     String? id,
     String? emoji,

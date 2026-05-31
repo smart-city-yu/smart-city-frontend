@@ -41,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _selectedNavIndex = 0;
 
-  MaplibreMapController? _mapController;
+  MapLibreMapController? _mapController;
   LatLng? _currentLocation;
 
   List<MapIssue> _mapIssues = [];
@@ -157,25 +157,53 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       if (perm == LocationPermission.denied) return;
 
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 15),
-        ),
-      );
+      // ── Step 1: show the last-known position instantly (no GPS wait) ──────
+      final last = await Geolocator.getLastKnownPosition();
+      if (last != null && mounted) {
+        setState(() =>
+            _currentLocation = LatLng(last.latitude, last.longitude));
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(_currentLocation!, 16),
+        );
+      }
+
+      // ── Step 2: get a fresh fix with a fallback accuracy chain ──────────
+      //  • medium  = GPS + Wi-Fi + cell towers → fast & reliable indoors
+      //  • If that times out (e.g. cold GPS on Samsung One UI 6), fall back
+      //    to low = network-only, which resolves in < 2 s almost everywhere.
+      Position? pos;
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 20),
+          ),
+        );
+      } catch (_) {
+        // Medium failed / timed out → instant network-only fallback
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.low,
+            timeLimit: Duration(seconds: 10),
+          ),
+        );
+      }
       if (!mounted) return;
-      setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
+      setState(() => _currentLocation = LatLng(pos!.latitude, pos.longitude));
       _mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(_currentLocation!, 16),
       );
     } catch (e) {
-      if (mounted) _snack('Unable to get location. Check GPS settings.');
+      // Only show the error when we have no position at all.
+      if (mounted && _currentLocation == null) {
+        _snack('Unable to get location. Check GPS settings.');
+      }
     } finally {
       _setLoading(false);
     }
   }
 
-  void _onMapCreated(MaplibreMapController controller) {
+  void _onMapCreated(MapLibreMapController controller) {
     setState(() => _mapController = controller);
   }
 
@@ -220,8 +248,11 @@ class _HomeScreenState extends State<HomeScreen> {
       if (result['success'] == true) {
         final list = result['data'] as List<dynamic>;
         setState(() {
+          // Filter out summaries whose lat/lng defaulted to (0, 0) because
+          // the backend omitted those fields.
           _summaryMarkers = list
               .map((j) => ReportSummary.fromJson(j as Map<String, dynamic>))
+              .where((s) => s.hasValidPosition)
               .toList();
           _mapIssues = [];
         });
@@ -242,26 +273,16 @@ class _HomeScreenState extends State<HomeScreen> {
       if (result['success'] == true) {
         final list = result['data'] as List<dynamic>;
         setState(() {
+          // Filter out reports whose lat/lon defaulted to (0, 0) — those
+          // would appear in the Atlantic Ocean and "teleport" on the map.
           _mapIssues = list
               .map((j) => MapIssue.fromJson(j as Map<String, dynamic>))
+              .where((issue) => issue.hasValidPosition)
               .toList();
         });
       } else {
         _snack(result['message'] as String? ?? 'Failed to load map reports.');
       }
-    }
-  }
-
-  Future<void> _loadReports() async {
-    final result = await _reportService.getAllReports();
-    if (!mounted) return;
-    if (result['success'] == true) {
-      final list = result['data'] as List<dynamic>;
-      setState(() {
-        _mapIssues = list
-            .map((j) => MapIssue.fromJson(j as Map<String, dynamic>))
-            .toList();
-      });
     }
   }
 

@@ -27,7 +27,7 @@ Widget _buildPhotoStrip(BuildContext context, List<String> urls) {
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: urls.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
           itemBuilder: (ctx, i) {
             return GestureDetector(
               onTap: () => _showFullImage(context, urls, i),
@@ -48,7 +48,7 @@ Widget _buildPhotoStrip(BuildContext context, List<String> urls) {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         ),
-                  errorBuilder: (_, __, ___) => Container(
+                  errorBuilder: (_, _, _) => Container(
                     width: 110,
                     height: 110,
                     color: Colors.grey.shade200,
