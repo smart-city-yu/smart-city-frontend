@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/api_constants.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthService {
   static const String _baseUrl = '$kApiHost/api/auth';
@@ -22,6 +23,18 @@ class AuthService {
 
       if (response.statusCode == 200) {
         await _saveToken(data['token'] as String);
+
+        // Separate try/catch — login still succeeds even if Firebase fails
+        try {
+          final firebaseToken = data['fireBaseToken'];
+          if (firebaseToken != null) {
+            await FirebaseAuth.instance.signInWithCustomToken(firebaseToken);
+            print('✅ Firebase UID: ${FirebaseAuth.instance.currentUser?.uid}');
+          }
+        } catch (e) {
+          print('⚠️ Firebase sign-in failed: $e');
+        }
+
         return {'success': true, 'message': 'Logged in successfully.', 'data': data};
       }
 
@@ -189,6 +202,7 @@ class AuthService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    await FirebaseAuth.instance.signOut();
   }
 
   Future<void> _saveToken(String token) async {

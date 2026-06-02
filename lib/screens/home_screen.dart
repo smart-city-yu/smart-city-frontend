@@ -167,26 +167,33 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
 
-      // ── Step 2: get a fresh fix with a fallback accuracy chain ──────────
-      //  • medium  = GPS + Wi-Fi + cell towers → fast & reliable indoors
-      //  • If that times out (e.g. cold GPS on Samsung One UI 6), fall back
-      //    to low = network-only, which resolves in < 2 s almost everywhere.
+      // ── Step 2: fresh fix — Dart .timeout() is used instead of
+      //    LocationSettings.timeLimit because Samsung Android 14 ignores
+      //    the native hint and the Future hangs forever without a Dart-level
+      //    deadline. .timeout() always throws TimeoutException on schedule.
       Position? pos;
       try {
+        // medium = GPS + Wi-Fi + cell — fast indoors, 20 s hard deadline
         pos = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.medium,
-            timeLimit: Duration(seconds: 20),
           ),
-        );
+        ).timeout(const Duration(seconds: 20));
       } catch (_) {
-        // Medium failed / timed out → instant network-only fallback
-        pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.low,
-            timeLimit: Duration(seconds: 10),
-          ),
-        );
+        // medium failed/timed out → network-only fallback (< 2 s)
+        try {
+          pos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.low,
+            ),
+          ).timeout(const Duration(seconds: 10));
+        } catch (_) {
+          // both failed — last-known from Step 1 is good enough
+          if (mounted && _currentLocation == null) {
+            _snack('Unable to get location. Check GPS settings.');
+          }
+          return;
+        }
       }
       if (!mounted) return;
       setState(() => _currentLocation = LatLng(pos!.latitude, pos.longitude));
@@ -194,7 +201,6 @@ class _HomeScreenState extends State<HomeScreen> {
         CameraUpdate.newLatLngZoom(_currentLocation!, 16),
       );
     } catch (e) {
-      // Only show the error when we have no position at all.
       if (mounted && _currentLocation == null) {
         _snack('Unable to get location. Check GPS settings.');
       }

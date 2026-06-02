@@ -1,3 +1,4 @@
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../../models/map_issue.dart';
@@ -196,7 +197,27 @@ void showIssueDetailsSheet({
             child: SingleChildScrollView(
               controller: scrollController,
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
-              child: Column(
+              child: StreamBuilder<DatabaseEvent>(
+                stream: FirebaseDatabase.instance
+                    .ref('reports/${issue.id}')
+                    .onValue,
+                builder: (context, firebaseSnap) {
+                  // Use live data from Firebase if available,
+                  // otherwise fall back to the value we already have
+                  int liveStill = issue.stillThereCount;
+                  int liveFixed = issue.fixedCount;
+
+                  if (firebaseSnap.hasData &&
+                      firebaseSnap.data?.snapshot.value != null) {
+                    final d = Map<String, dynamic>.from(
+                        firebaseSnap.data!.snapshot.value as Map);
+                    liveStill =
+                        (d['stillVotes'] as num?)?.toInt() ?? liveStill;
+                    liveFixed =
+                        (d['fixedVotes'] as num?)?.toInt() ?? liveFixed;
+                  }
+
+                  return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SheetHandle(),
@@ -338,7 +359,7 @@ void showIssueDetailsSheet({
                                       color: Colors.orange, size: 22),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${issue.stillThereCount}',
+                                    '$liveStill',
                                     style: const TextStyle(
                                         color: Colors.orange,
                                         fontWeight: FontWeight.bold,
@@ -367,7 +388,7 @@ void showIssueDetailsSheet({
                                       color: Colors.green, size: 22),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${issue.fixedCount}',
+                                    '$liveFixed',
                                     style: const TextStyle(
                                         color: Colors.green,
                                         fontWeight: FontWeight.bold,
@@ -515,7 +536,7 @@ void showIssueDetailsSheet({
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            '${issue.stillThereCount}',
+                                            '$liveStill',
                                             style: const TextStyle(
                                               color: AppColors.greenDark,
                                               fontWeight: FontWeight.w600,
@@ -611,7 +632,7 @@ void showIssueDetailsSheet({
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            '${issue.fixedCount}',
+                                            '$liveFixed',
                                             style: const TextStyle(
                                               color: Color(0xFFC43C34),
                                               fontWeight: FontWeight.w600,
@@ -685,7 +706,9 @@ void showIssueDetailsSheet({
                     ),
                   ],
                 ],
-              ),    // Column
+              );    // Column
+                },  // StreamBuilder builder
+              ),    // StreamBuilder
             ),      // SingleChildScrollView
           ),        // Container
         );          // DraggableScrollableSheet
