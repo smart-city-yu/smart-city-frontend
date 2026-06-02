@@ -25,7 +25,7 @@ class HomeMapView extends StatefulWidget {
   final ValueChanged<PlaceMarker> onTapPlace;
   final List<LatLng> pathPoints;
   final void Function(LatLngBounds bounds, double zoom)? onMapMove;
-  final void Function(MaplibreMapController controller)? onMapCreated;
+  final void Function(MapLibreMapController controller)? onMapCreated;
   final VoidCallback? onMapReady;
 
   const HomeMapView({
@@ -52,7 +52,7 @@ class HomeMapView extends StatefulWidget {
 }
 
 class _HomeMapViewState extends State<HomeMapView> {
-  MaplibreMapController? _ctrl;
+  MapLibreMapController? _ctrl;
   bool _styleLoaded = false;
 
   // Active annotations — keyed by issue id for issues, plain list for others
@@ -62,6 +62,7 @@ class _HomeMapViewState extends State<HomeMapView> {
   final List<Symbol> _placeSymbols = [];
   final Map<Symbol, PlaceMarker> _symbolToPlace = {};
   Symbol? _locationSymbol;
+  Symbol? _destinationSymbol;
   Line? _routeLine;
 
   // Images already added to the map style — avoids duplicate addImage calls
@@ -86,6 +87,7 @@ class _HomeMapViewState extends State<HomeMapView> {
     }
     if (widget.pathPoints != old.pathPoints) {
       _updateRouteLine();
+      _updateDestinationMarker();
     }
   }
 
@@ -97,7 +99,7 @@ class _HomeMapViewState extends State<HomeMapView> {
 
   // ── Map callbacks ────────────────────────────────────────────────────────
 
-  void _onMapCreated(MaplibreMapController controller) {
+  void _onMapCreated(MapLibreMapController controller) {
     _ctrl = controller;
     _ctrl!.onSymbolTapped.add(_onSymbolTapped);
     widget.onMapCreated?.call(controller);
@@ -109,6 +111,7 @@ class _HomeMapViewState extends State<HomeMapView> {
     await _updatePlaceMarkers();
     await _updateLocationMarker();
     await _updateRouteLine();
+    await _updateDestinationMarker();
     widget.onMapReady?.call();
   }
 
@@ -144,7 +147,9 @@ class _HomeMapViewState extends State<HomeMapView> {
     for (int i = 0; i < a.length; i++) {
       if (a[i].lat != b[i].lat ||
           a[i].lng != b[i].lng ||
-          a[i].count != b[i].count) return false;
+          a[i].count != b[i].count) {
+        return false;
+      }
     }
     return true;
   }
@@ -175,7 +180,7 @@ class _HomeMapViewState extends State<HomeMapView> {
     canvas.drawCircle(
       const Offset(sz / 2, sz / 2),
       sz / 2,
-      Paint()..color = color.withOpacity(0.25),
+      Paint()..color = color.withValues(alpha: 0.25),
     );
     canvas.drawCircle(
       const Offset(sz / 2, sz / 2),
@@ -203,7 +208,7 @@ class _HomeMapViewState extends State<HomeMapView> {
     canvas.drawCircle(
       const Offset(sz / 2, sz / 2),
       sz / 2 - 3,
-      Paint()..color = AppColors.primary.withOpacity(0.85),
+      Paint()..color = AppColors.primary.withValues(alpha: 0.85),
     );
     canvas.drawCircle(
       const Offset(sz / 2, sz / 2),
@@ -306,6 +311,45 @@ class _HomeMapViewState extends State<HomeMapView> {
     return bd!.buffer.asUint8List();
   }
 
+  Future<Uint8List> _renderDestinationImage() async {
+    const double w = 52, h = 68;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, w, h));
+
+    const Color pinColor = Color(0xFFD32F2F);
+
+    final tail = Path()
+      ..moveTo(w / 2 - 10, w - 8)
+      ..lineTo(w / 2 + 10, w - 8)
+      ..lineTo(w / 2, h - 2)
+      ..close();
+    canvas.drawPath(tail, Paint()..color = pinColor);
+
+    canvas.drawCircle(
+      Offset(w / 2, w / 2),
+      w / 2 - 2,
+      Paint()..color = pinColor,
+    );
+    canvas.drawCircle(
+      Offset(w / 2, w / 2),
+      w / 2 - 2,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
+
+    final pb = ui.ParagraphBuilder(
+      ui.ParagraphStyle(textAlign: TextAlign.center, fontSize: 22),
+    )..addText('🏁');
+    final para = pb.build()..layout(ui.ParagraphConstraints(width: w));
+    canvas.drawParagraph(para, Offset(0, (w - para.height) / 2));
+
+    final img = await recorder.endRecording().toImage(w.toInt(), h.toInt());
+    final bd = await img.toByteData(format: ui.ImageByteFormat.png);
+    return bd!.buffer.asUint8List();
+  }
+
   // ── Annotation update methods ────────────────────────────────────────────
 
   Future<void> _updateIssueAndSummaryMarkers() async {
@@ -340,7 +384,7 @@ class _HomeMapViewState extends State<HomeMapView> {
     } else {
       for (final issue in widget.mapIssues) {
         final imgKey =
-            'issue_${issue.emoji}_${issue.color.value.toRadixString(16)}';
+            'issue_${issue.emoji}_${issue.color.toARGB32().toRadixString(16)}';
         await _ensureImage(
             imgKey, () => _renderEmojiMarker(issue.emoji, issue.color));
         final sym = await _ctrl!.addSymbol(SymbolOptions(
@@ -408,13 +452,32 @@ class _HomeMapViewState extends State<HomeMapView> {
     if (widget.pathPoints.isEmpty) return;
 
     // Convert Flutter Color(0xFF2E7D32) → '#2E7D32'
-    final hex = AppColors.primary.value.toRadixString(16).padLeft(8, '0');
+    final hex = AppColors.primary.toARGB32().toRadixString(16).padLeft(8, '0');
     _routeLine = await _ctrl!.addLine(LineOptions(
       geometry: widget.pathPoints,
       lineColor: '#${hex.substring(2)}',
       lineWidth: 8.0,
       lineOpacity: 1.0,
       lineJoin: 'round',
+    ));
+  }
+
+  Future<void> _updateDestinationMarker() async {
+    if (_ctrl == null) return;
+
+    if (_destinationSymbol != null) {
+      await _ctrl!.removeSymbol(_destinationSymbol!);
+      _destinationSymbol = null;
+    }
+    if (widget.pathPoints.isEmpty) return;
+
+    await _ensureImage('destination', _renderDestinationImage);
+    _destinationSymbol = await _ctrl!.addSymbol(SymbolOptions(
+      geometry: widget.pathPoints.last,
+      iconImage: 'destination',
+      iconSize: 1.0,
+      iconAnchor: 'bottom',
+      zIndex: 5,
     ));
   }
 
@@ -427,7 +490,7 @@ class _HomeMapViewState extends State<HomeMapView> {
     return Stack(
       children: [
         // ── MapLibre map ───────────────────────────────────────────────────
-        MaplibreMap(
+        MapLibreMap(
           styleString: kMapTilerStyleUrl,
           initialCameraPosition: const CameraPosition(
             target: LatLng(31.24, 36.51),
@@ -459,7 +522,7 @@ class _HomeMapViewState extends State<HomeMapView> {
                   color: AppColors.white,
                   borderRadius: BorderRadius.circular(24),
                   border:
-                      Border.all(color: AppColors.primary.withOpacity(0.4)),
+                      Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
                   boxShadow: const [
                     BoxShadow(
                       color: Color(0x22000000),
@@ -487,6 +550,46 @@ class _HomeMapViewState extends State<HomeMapView> {
                     const SizedBox(width: 8),
                     const Icon(Icons.close,
                         size: 15, color: AppColors.textGrey),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+        // ── Cancel Route button ────────────────────────────────────────────
+        if (widget.pathPoints.isNotEmpty)
+          Positioned(
+            left: 14,
+            bottom: 148,
+            child: GestureDetector(
+              onTap: widget.onClearPlaces,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD32F2F),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x33000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.close, size: 15, color: Colors.white),
+                    SizedBox(width: 6),
+                    Text(
+                      'Cancel Route',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
                   ],
                 ),
               ),

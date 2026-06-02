@@ -41,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _selectedNavIndex = 0;
 
-  MaplibreMapController? _mapController;
+  MapLibreMapController? _mapController;
   LatLng? _currentLocation;
 
   List<MapIssue> _mapIssues = [];
@@ -209,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _onMapCreated(MaplibreMapController controller) {
+  void _onMapCreated(MapLibreMapController controller) {
     setState(() => _mapController = controller);
   }
 
@@ -254,8 +254,11 @@ class _HomeScreenState extends State<HomeScreen> {
       if (result['success'] == true) {
         final list = result['data'] as List<dynamic>;
         setState(() {
+          // Filter out summaries whose lat/lng defaulted to (0, 0) because
+          // the backend omitted those fields.
           _summaryMarkers = list
               .map((j) => ReportSummary.fromJson(j as Map<String, dynamic>))
+              .where((s) => s.hasValidPosition)
               .toList();
           _mapIssues = [];
         });
@@ -276,26 +279,16 @@ class _HomeScreenState extends State<HomeScreen> {
       if (result['success'] == true) {
         final list = result['data'] as List<dynamic>;
         setState(() {
+          // Filter out reports whose lat/lon defaulted to (0, 0) — those
+          // would appear in the Atlantic Ocean and "teleport" on the map.
           _mapIssues = list
               .map((j) => MapIssue.fromJson(j as Map<String, dynamic>))
+              .where((issue) => issue.hasValidPosition)
               .toList();
         });
       } else {
         _snack(result['message'] as String? ?? 'Failed to load map reports.');
       }
-    }
-  }
-
-  Future<void> _loadReports() async {
-    final result = await _reportService.getAllReports();
-    if (!mounted) return;
-    if (result['success'] == true) {
-      final list = result['data'] as List<dynamic>;
-      setState(() {
-        _mapIssues = list
-            .map((j) => MapIssue.fromJson(j as Map<String, dynamic>))
-            .toList();
-      });
     }
   }
 

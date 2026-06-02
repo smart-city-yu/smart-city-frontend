@@ -45,11 +45,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void logout(BuildContext context) async {
+  Future<void> logout(BuildContext context) async {
     await _authService.logout();
-    if (mounted) {
-      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-    }
+    if (!context.mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
 
   // ── PUT /api/user/profile ─────────────────────────────────────────────────
@@ -58,7 +57,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final nameCtrl = TextEditingController(text: _user!.fullName);
     final phoneCtrl = TextEditingController(text: _user!.phone);
 
-    final inputDecoration = (String label, IconData icon) => InputDecoration(
+    InputDecoration inputDecoration(String label, IconData icon) =>
+        InputDecoration(
           labelText: label,
           labelStyle: const TextStyle(color: AppColors.textGrey, fontSize: 14),
           prefixIcon: Icon(icon, color: AppColors.textLight, size: 20),
@@ -231,7 +231,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: AppColors.primary,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.3),
+                      color: AppColors.primary.withValues(alpha: 0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -287,7 +287,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
@@ -321,7 +321,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
